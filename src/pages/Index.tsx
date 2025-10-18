@@ -83,10 +83,10 @@ const Index = () => {
       
       if (data.success) {
         setGeneratedAudio(data.audioUrl);
-        setVoiceDescription(data.voiceDescription);
+        setVoiceDescription(data.voiceUsed ? `Generated using ${data.voiceUsed} voice` : "");
         toast({
           title: "Voice Generated!",
-          description: data.message || "Your voiceover is ready to preview.",
+          description: "Your voiceover is ready and will play automatically.",
         });
       } else {
         throw new Error(data.error || "Generation failed");
