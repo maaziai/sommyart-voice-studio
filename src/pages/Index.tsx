@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -29,7 +29,21 @@ const Index = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
   const [voiceDescription, setVoiceDescription] = useState<string>("");
+  const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
+
+  // Auto-play when new audio is generated
+  useEffect(() => {
+    if (generatedAudio && audioRef.current) {
+      audioRef.current.play().catch((error) => {
+        console.log("Auto-play prevented:", error);
+        toast({
+          title: "Audio Ready",
+          description: "Click play to listen to your generated voice.",
+        });
+      });
+    }
+  }, [generatedAudio, toast]);
 
   const handleGenerate = async () => {
     if (!text.trim()) {
@@ -249,8 +263,9 @@ const Index = () => {
                           </p>
                         </div>
                       )}
-
+                      
                       <audio 
+                        ref={audioRef}
                         controls 
                         className="w-full"
                         src={generatedAudio}
