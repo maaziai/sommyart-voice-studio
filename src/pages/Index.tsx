@@ -15,7 +15,7 @@ const voiceStyles = [
 ];
 
 const backgroundMusic = [
-  { value: "", label: "No Music" },
+  { value: "none", label: "No Music" },
   { value: "calm_ambient", label: "Calm Ambient" },
   { value: "inspiring_piano", label: "Inspiring Piano" },
   { value: "cinematic_bg", label: "Cinematic Background" },
@@ -25,7 +25,7 @@ const backgroundMusic = [
 const Index = () => {
   const [text, setText] = useState("");
   const [voiceStyle, setVoiceStyle] = useState("narrator");
-  const [music, setMusic] = useState("");
+  const [music, setMusic] = useState("none");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
   const [voiceDescription, setVoiceDescription] = useState<string>("");
@@ -56,7 +56,7 @@ const Index = () => {
           body: JSON.stringify({
             text,
             voice_style: voiceStyle,
-            music_choice: music,
+            music_choice: music === "none" ? "" : music,
           }),
         }
       );
