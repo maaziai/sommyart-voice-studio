@@ -7,11 +7,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mic, Download, Volume2 } from "lucide-react";
 import heroImage from "@/assets/hero-studio.jpg";
 
+// Puter.js voice mapping
 const voiceStyles = [
-  { value: "male_calm", label: "Male (Deep Calm)", icon: "🎙️" },
-  { value: "female_soft", label: "Female (Soft Clear)", icon: "🎤" },
-  { value: "narrator", label: "Narrator (Neutral)", icon: "📢" },
-  { value: "emotional", label: "Emotional (Expressive)", icon: "✨" },
+  { value: "Matthew", label: "Male (Deep Calm)", icon: "🎙️", engine: "neural" },
+  { value: "Joanna", label: "Female (Soft Clear)", icon: "🎤", engine: "neural" },
+  { value: "Brian", label: "Narrator (Neutral)", icon: "📢", engine: "standard" },
+  { value: "Amy", label: "Emotional (Expressive)", icon: "✨", engine: "generative" },
 ];
 
 const backgroundMusic = [
@@ -22,20 +23,35 @@ const backgroundMusic = [
   { value: "corporate_beat", label: "Corporate Beat" },
 ];
 
+// Declare puter on window
+declare global {
+  interface Window {
+    puter: {
+      ai: {
+        txt2speech: (text: string, options: {
+          voice: string;
+          engine: string;
+          language: string;
+        }) => Promise<HTMLAudioElement>;
+      };
+    };
+  }
+}
+
 const Index = () => {
   const [text, setText] = useState("");
-  const [voiceStyle, setVoiceStyle] = useState("narrator");
+  const [voiceStyle, setVoiceStyle] = useState("Joanna");
   const [music, setMusic] = useState("none");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
+  const [generatedAudio, setGeneratedAudio] = useState<HTMLAudioElement | null>(null);
   const [voiceDescription, setVoiceDescription] = useState<string>("");
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
 
   // Auto-play when new audio is generated
   useEffect(() => {
-    if (generatedAudio && audioRef.current) {
-      audioRef.current.play().catch((error) => {
+    if (generatedAudio) {
+      generatedAudio.play().catch((error) => {
         console.log("Auto-play prevented:", error);
         toast({
           title: "Audio Ready",
@@ -55,42 +71,38 @@ const Index = () => {
       return;
     }
 
+    if (text.length > 3000) {
+      toast({
+        title: "Text Too Long",
+        description: "Please keep your text under 3000 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsGenerating(true);
     setGeneratedAudio(null);
     setVoiceDescription("");
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-voice`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            text,
-            voice_style: voiceStyle,
-            music_choice: music === "none" ? "" : music,
-          }),
-        }
-      );
+      // Get the selected voice configuration
+      const selectedVoice = voiceStyles.find(v => v.value === voiceStyle);
+      const engine = selectedVoice?.engine || "neural";
 
-      if (!response.ok) {
-        throw new Error("Failed to generate voice");
-      }
+      // Use Puter.js text-to-speech
+      const audio = await window.puter.ai.txt2speech(text, {
+        voice: voiceStyle,
+        engine: engine,
+        language: "en-US"
+      });
 
-      const data = await response.json();
+      setGeneratedAudio(audio);
+      setVoiceDescription(`Generated using ${voiceStyle} voice with ${engine} engine`);
       
-      if (data.success) {
-        setGeneratedAudio(data.audioUrl);
-        setVoiceDescription(data.voiceUsed ? `Generated using ${data.voiceUsed} voice` : "");
-        toast({
-          title: "Voice Generated!",
-          description: "Your voiceover is ready and will play automatically.",
-        });
-      } else {
-        throw new Error(data.error || "Generation failed");
-      }
+      toast({
+        title: "Voice Generated!",
+        description: "Your voiceover is ready and will play automatically.",
+      });
     } catch (error) {
       console.error("Error:", error);
       toast({
@@ -106,9 +118,17 @@ const Index = () => {
   const handleDownload = () => {
     if (!generatedAudio) return;
     
+    // Create a download link from the audio element
+    const link = document.createElement('a');
+    link.href = generatedAudio.src;
+    link.download = `sommyart-voice-${Date.now()}.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
     toast({
       title: "Download Started",
-      description: "Your voice file is being prepared.",
+      description: "Your voice file is being downloaded.",
     });
   };
 
@@ -259,19 +279,20 @@ const Index = () => {
                       {voiceDescription && (
                         <div className="p-4 bg-background/50 rounded-lg border border-border/30">
                           <p className="text-sm text-muted-foreground italic">
-                            "{voiceDescription}"
+                            {voiceDescription}
                           </p>
                         </div>
                       )}
                       
-                      <audio 
-                        ref={audioRef}
-                        controls 
-                        className="w-full"
-                        src={generatedAudio}
-                      >
-                        Your browser does not support the audio element.
-                      </audio>
+                      <div className="w-full">
+                        <audio 
+                          controls 
+                          className="w-full"
+                          src={generatedAudio.src}
+                        >
+                          Your browser does not support the audio element.
+                        </audio>
+                      </div>
                     </div>
                   )}
                 </Card>
