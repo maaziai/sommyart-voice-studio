@@ -5,14 +5,16 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mic, Download, Volume2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
 
-// Puter.js voice mapping
-const voiceStyles = [
-  { value: "Matthew", label: "Male (Deep Calm)", icon: "🎙️", engine: "neural" },
-  { value: "Joanna", label: "Female (Soft Clear)", icon: "🎤", engine: "neural" },
-  { value: "Brian", label: "Narrator (Neutral)", icon: "📢", engine: "standard" },
-  { value: "Amy", label: "Emotional (Expressive)", icon: "✨", engine: "generative" },
+const languages = [
+  { value: "en", label: "English 🇬🇧", icon: "🇬🇧" },
+  { value: "fr", label: "French 🇫🇷", icon: "🇫🇷" },
+  { value: "es", label: "Spanish 🇪🇸", icon: "🇪🇸" },
+  { value: "de", label: "German 🇩🇪", icon: "🇩🇪" },
+  { value: "it", label: "Italian 🇮🇹", icon: "🇮🇹" },
+  { value: "pt", label: "Portuguese 🇵🇹", icon: "🇵🇹" },
 ];
 
 const backgroundMusic = [
@@ -23,27 +25,13 @@ const backgroundMusic = [
   { value: "corporate_beat", label: "Corporate Beat" },
 ];
 
-// Declare puter on window
-declare global {
-  interface Window {
-    puter: {
-      ai: {
-        txt2speech: (text: string, options: {
-          voice: string;
-          engine: string;
-          language: string;
-        }) => Promise<HTMLAudioElement>;
-      };
-    };
-  }
-}
-
 const Index = () => {
   const [text, setText] = useState("");
-  const [voiceStyle, setVoiceStyle] = useState("Joanna");
+  const [language, setLanguage] = useState("en");
+  const [slow, setSlow] = useState(false);
   const [music, setMusic] = useState("none");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedAudio, setGeneratedAudio] = useState<HTMLAudioElement | null>(null);
+  const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
   const [voiceDescription, setVoiceDescription] = useState<string>("");
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
@@ -51,7 +39,8 @@ const Index = () => {
   // Auto-play when new audio is generated
   useEffect(() => {
     if (generatedAudio) {
-      generatedAudio.play().catch((error) => {
+      const audio = new Audio(generatedAudio);
+      audio.play().catch((error) => {
         console.log("Auto-play prevented:", error);
         toast({
           title: "Audio Ready",
@@ -85,24 +74,27 @@ const Index = () => {
     setVoiceDescription("");
 
     try {
-      // Get the selected voice configuration
-      const selectedVoice = voiceStyles.find(v => v.value === voiceStyle);
-      const engine = selectedVoice?.engine || "neural";
-
-      // Use Puter.js text-to-speech
-      const audio = await window.puter.ai.txt2speech(text, {
-        voice: voiceStyle,
-        engine: engine,
-        language: "en-US"
-      });
-
-      setGeneratedAudio(audio);
-      setVoiceDescription(`Generated using ${voiceStyle} voice with ${engine} engine`);
+      console.log("Generating TTS with gTTS:", { lang: language, slow });
       
-      toast({
-        title: "Voice Generated!",
-        description: "Your voiceover is ready and will play automatically.",
+      const { data, error } = await supabase.functions.invoke('generate-voice', {
+        body: { text, lang: language, slow }
       });
+
+      if (error) throw error;
+
+      if (data.success && data.audioUrl) {
+        setGeneratedAudio(data.audioUrl);
+        const speedText = slow ? "slow" : "normal";
+        const langName = languages.find(l => l.value === language)?.label || language;
+        setVoiceDescription(`Generated in ${langName} at ${speedText} speed`);
+        
+        toast({
+          title: "Voice Generated!",
+          description: "Your voiceover is ready and will play automatically.",
+        });
+      } else {
+        throw new Error(data.error || "Failed to generate voice");
+      }
     } catch (error) {
       console.error("Error:", error);
       toast({
@@ -118,9 +110,8 @@ const Index = () => {
   const handleDownload = () => {
     if (!generatedAudio) return;
     
-    // Create a download link from the audio element
     const link = document.createElement('a');
-    link.href = generatedAudio.src;
+    link.href = generatedAudio;
     link.download = `sommyart-voice-${Date.now()}.mp3`;
     document.body.appendChild(link);
     link.click();
@@ -184,22 +175,35 @@ const Index = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground">Voice Style</label>
-                <Select value={voiceStyle} onValueChange={setVoiceStyle}>
+                <label className="text-sm font-semibold text-foreground">Language</label>
+                <Select value={language} onValueChange={setLanguage}>
                   <SelectTrigger className="bg-background/50 border-border/50">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-popover border-border z-50">
-                    {voiceStyles.map((style) => (
-                      <SelectItem key={style.value} value={style.value} className="cursor-pointer">
+                    {languages.map((lang) => (
+                      <SelectItem key={lang.value} value={lang.value} className="cursor-pointer">
                         <span className="flex items-center gap-2">
-                          <span>{style.icon}</span>
-                          <span>{style.label}</span>
+                          <span>{lang.icon}</span>
+                          <span>{lang.label}</span>
                         </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-background/50 rounded-lg border border-border/50">
+                <input
+                  type="checkbox"
+                  id="slow"
+                  checked={slow}
+                  onChange={(e) => setSlow(e.target.checked)}
+                  className="w-4 h-4 cursor-pointer"
+                />
+                <label htmlFor="slow" className="text-sm font-medium cursor-pointer">
+                  Slow speed (better for learning)
+                </label>
               </div>
 
               <div className="space-y-2">
@@ -288,7 +292,7 @@ const Index = () => {
                         <audio 
                           controls 
                           className="w-full"
-                          src={generatedAudio.src}
+                          src={generatedAudio}
                         >
                           Your browser does not support the audio element.
                         </audio>

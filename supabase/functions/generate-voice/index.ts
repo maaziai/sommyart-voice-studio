@@ -1,17 +1,8 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-// Map custom voice styles to OpenAI voices
-const voiceMap: Record<string, string> = {
-  male_calm: "onyx",      // Deep, calm male voice
-  female_soft: "nova",    // Soft, clear female voice
-  narrator: "alloy",      // Neutral narrator voice
-  emotional: "shimmer",   // Expressive, emotional voice
 };
 
 serve(async (req) => {
@@ -20,42 +11,37 @@ serve(async (req) => {
   }
 
   try {
-    const { text, voice_style } = await req.json();
+    const { text, lang = "en", slow = false } = await req.json();
     
-    console.log("Generating TTS for text:", text?.substring(0, 50), "with voice:", voice_style);
+    console.log("Generating gTTS for text:", text?.substring(0, 50), "lang:", lang, "slow:", slow);
 
     if (!text || text.trim().length === 0) {
       throw new Error("Text is required and cannot be empty");
     }
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
-    }
+    // Build Google Translate TTS URL (same as gTTS uses)
+    const params = new URLSearchParams({
+      ie: "UTF-8",
+      q: text,
+      tl: lang,
+      ttsspeed: slow ? "0.24" : "1",
+      client: "tw-ob",
+      textlen: text.length.toString(),
+    });
 
-    // Map voice style to OpenAI voice
-    const openaiVoice = voiceMap[voice_style] || "alloy";
+    const url = `https://translate.google.com/translate_tts?${params.toString()}`;
+    
+    console.log("Calling Google TTS API");
 
-    console.log("Using OpenAI voice:", openaiVoice);
-
-    // Call OpenAI TTS API
-    const response = await fetch("https://api.openai.com/v1/audio/speech", {
-      method: "POST",
+    // Fetch audio from Google Translate TTS
+    const response = await fetch(url, {
       headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       },
-      body: JSON.stringify({
-        model: "tts-1",  // Use tts-1-hd for higher quality (slower)
-        input: text,
-        voice: openaiVoice,
-        response_format: "mp3",
-      }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("OpenAI TTS error:", response.status, errorText);
+      console.error("Google TTS error:", response.status);
       throw new Error(`TTS generation failed: ${response.status}`);
     }
 
@@ -65,14 +51,15 @@ serve(async (req) => {
       String.fromCharCode(...new Uint8Array(arrayBuffer))
     );
 
-    console.log("TTS generation completed successfully, audio size:", arrayBuffer.byteLength, "bytes");
+    console.log("TTS generation completed, audio size:", arrayBuffer.byteLength, "bytes");
 
     return new Response(
       JSON.stringify({
         success: true,
         audioUrl: `data:audio/mp3;base64,${base64Audio}`,
         message: "Voice generated successfully!",
-        voiceUsed: openaiVoice,
+        lang,
+        slow,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
