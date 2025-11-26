@@ -13,7 +13,7 @@ serve(async (req) => {
   try {
     const { text } = await req.json();
     
-    console.log("Generating Bytez Suno Bark audio for text:", text?.substring(0, 50));
+    console.log("Generating Google Gemini TTS audio for text:", text?.substring(0, 50));
 
     // Server-side input validation
     if (!text || text.trim().length === 0) {
@@ -24,43 +24,62 @@ serve(async (req) => {
       throw new Error("Text exceeds maximum length of 3000 characters");
     }
 
-    const BYTEZ_API_KEY = Deno.env.get("BYTEZ_API_KEY");
-    if (!BYTEZ_API_KEY) {
-      throw new Error("BYTEZ_API_KEY is not configured");
+    const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
+    if (!GOOGLE_API_KEY) {
+      throw new Error("GOOGLE_API_KEY is not configured");
     }
 
-    console.log("Calling Bytez Suno Bark API");
+    console.log("Calling Google Gemini 2.5 Flash TTS API");
 
-    // Call Bytez API
-    const response = await fetch("https://api.bytez.com/models/v2/suno/bark-small", {
-      method: "POST",
-      headers: {
-        "Authorization": BYTEZ_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text: text,
-      }),
-    });
+    // Call Google Generative AI API
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GOOGLE_API_KEY}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: text
+            }]
+          }],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: "Kore"
+                }
+              }
+            }
+          }
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Bytez API error:", response.status, errorText);
+      console.error("Google API error:", response.status, errorText);
       throw new Error(`TTS generation failed: ${response.status} - ${errorText}`);
     }
 
-    // Convert audio to base64
-    const arrayBuffer = await response.arrayBuffer();
-    const base64Audio = btoa(
-      String.fromCharCode(...new Uint8Array(arrayBuffer))
-    );
+    const result = await response.json();
+    
+    // Extract audio data from response
+    const audioData = result.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    
+    if (!audioData) {
+      throw new Error("No audio data in response");
+    }
 
-    console.log("TTS generation completed, audio size:", arrayBuffer.byteLength, "bytes");
+    console.log("TTS generation completed, audio data received");
 
     return new Response(
       JSON.stringify({
         success: true,
-        audioUrl: `data:audio/wav;base64,${base64Audio}`,
+        audioUrl: `data:audio/wav;base64,${audioData}`,
         message: "Voice generated successfully!",
       }),
       {
