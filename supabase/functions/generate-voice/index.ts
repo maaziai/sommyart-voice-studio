@@ -11,38 +11,37 @@ serve(async (req) => {
   }
 
   try {
-    const { text, lang = "en", slow = false } = await req.json();
+    const { text } = await req.json();
     
-    console.log("Generating gTTS for text:", text?.substring(0, 50), "lang:", lang, "slow:", slow);
+    console.log("Generating Bytez Suno Bark audio for text:", text?.substring(0, 50));
 
     if (!text || text.trim().length === 0) {
       throw new Error("Text is required and cannot be empty");
     }
 
-    // Build Google Translate TTS URL (same as gTTS uses)
-    const params = new URLSearchParams({
-      ie: "UTF-8",
-      q: text,
-      tl: lang,
-      ttsspeed: slow ? "0.24" : "1",
-      client: "tw-ob",
-      textlen: text.length.toString(),
-    });
+    const BYTEZ_API_KEY = Deno.env.get("BYTEZ_API_KEY");
+    if (!BYTEZ_API_KEY) {
+      throw new Error("BYTEZ_API_KEY is not configured");
+    }
 
-    const url = `https://translate.google.com/translate_tts?${params.toString()}`;
-    
-    console.log("Calling Google TTS API");
+    console.log("Calling Bytez Suno Bark API");
 
-    // Fetch audio from Google Translate TTS
-    const response = await fetch(url, {
+    // Call Bytez API
+    const response = await fetch("https://api.bytez.com/models/v2/suno/bark-small", {
+      method: "POST",
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Authorization": BYTEZ_API_KEY,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        text: text,
+      }),
     });
 
     if (!response.ok) {
-      console.error("Google TTS error:", response.status);
-      throw new Error(`TTS generation failed: ${response.status}`);
+      const errorText = await response.text();
+      console.error("Bytez API error:", response.status, errorText);
+      throw new Error(`TTS generation failed: ${response.status} - ${errorText}`);
     }
 
     // Convert audio to base64
@@ -56,10 +55,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        audioUrl: `data:audio/mp3;base64,${base64Audio}`,
+        audioUrl: `data:audio/wav;base64,${base64Audio}`,
         message: "Voice generated successfully!",
-        lang,
-        slow,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

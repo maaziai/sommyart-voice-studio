@@ -8,15 +8,6 @@ import { Loader2, Mic, Download, Volume2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
 
-const languages = [
-  { value: "en", label: "English 🇬🇧", icon: "🇬🇧" },
-  { value: "fr", label: "French 🇫🇷", icon: "🇫🇷" },
-  { value: "es", label: "Spanish 🇪🇸", icon: "🇪🇸" },
-  { value: "de", label: "German 🇩🇪", icon: "🇩🇪" },
-  { value: "it", label: "Italian 🇮🇹", icon: "🇮🇹" },
-  { value: "pt", label: "Portuguese 🇵🇹", icon: "🇵🇹" },
-];
-
 const backgroundMusic = [
   { value: "none", label: "No Music" },
   { value: "calm_ambient", label: "Calm Ambient" },
@@ -27,12 +18,9 @@ const backgroundMusic = [
 
 const Index = () => {
   const [text, setText] = useState("");
-  const [language, setLanguage] = useState("en");
-  const [slow, setSlow] = useState(false);
   const [music, setMusic] = useState("none");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
-  const [voiceDescription, setVoiceDescription] = useState<string>("");
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
 
@@ -71,22 +59,18 @@ const Index = () => {
 
     setIsGenerating(true);
     setGeneratedAudio(null);
-    setVoiceDescription("");
 
     try {
-      console.log("Generating TTS with gTTS:", { lang: language, slow });
+      console.log("Generating TTS with Bytez Suno Bark");
       
       const { data, error } = await supabase.functions.invoke('generate-voice', {
-        body: { text, lang: language, slow }
+        body: { text }
       });
 
       if (error) throw error;
 
       if (data.success && data.audioUrl) {
         setGeneratedAudio(data.audioUrl);
-        const speedText = slow ? "slow" : "normal";
-        const langName = languages.find(l => l.value === language)?.label || language;
-        setVoiceDescription(`Generated in ${langName} at ${speedText} speed`);
         
         toast({
           title: "Voice Generated!",
@@ -112,7 +96,7 @@ const Index = () => {
     
     const link = document.createElement('a');
     link.href = generatedAudio;
-    link.download = `sommyart-voice-${Date.now()}.mp3`;
+    link.download = `sommyart-bytez-voice-${Date.now()}.wav`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -174,36 +158,10 @@ const Index = () => {
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground">Language</label>
-                <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger className="bg-background/50 border-border/50">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover border-border z-50">
-                    {languages.map((lang) => (
-                      <SelectItem key={lang.value} value={lang.value} className="cursor-pointer">
-                        <span className="flex items-center gap-2">
-                          <span>{lang.icon}</span>
-                          <span>{lang.label}</span>
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 bg-background/50 rounded-lg border border-border/50">
-                <input
-                  type="checkbox"
-                  id="slow"
-                  checked={slow}
-                  onChange={(e) => setSlow(e.target.checked)}
-                  className="w-4 h-4 cursor-pointer"
-                />
-                <label htmlFor="slow" className="text-sm font-medium cursor-pointer">
-                  Slow speed (better for learning)
-                </label>
+              <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                <p className="text-sm text-muted-foreground">
+                  🎙️ Powered by <span className="font-semibold text-primary">Bytez Suno Bark AI</span> - Natural-sounding voice synthesis
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -280,14 +238,6 @@ const Index = () => {
                         </div>
                       </div>
                       
-                      {voiceDescription && (
-                        <div className="p-4 bg-background/50 rounded-lg border border-border/30">
-                          <p className="text-sm text-muted-foreground italic">
-                            {voiceDescription}
-                          </p>
-                        </div>
-                      )}
-                      
                       <div className="w-full">
                         <audio 
                           controls 
@@ -318,7 +268,7 @@ const Index = () => {
                 <h3 className="text-sm font-semibold mb-2 text-foreground">💡 Pro Tips</h3>
                 <ul className="text-xs text-muted-foreground space-y-1">
                   <li>• Keep sentences clear and well-punctuated</li>
-                  <li>• Choose voice styles that match your content</li>
+                  <li>• Use natural language for best results</li>
                   <li>• Add background music for professional polish</li>
                   <li>• Preview before downloading for best results</li>
                 </ul>
@@ -335,9 +285,9 @@ const Index = () => {
             <div className="w-12 h-12 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
               <Mic className="w-6 h-6 text-primary" />
             </div>
-            <h3 className="font-semibold">Multiple Voice Styles</h3>
+            <h3 className="font-semibold">AI Voice Generation</h3>
             <p className="text-sm text-muted-foreground">
-              Choose from professional voice actors with different tones and emotions
+              Powered by Bytez Suno Bark AI for natural-sounding voice synthesis
             </p>
           </Card>
 
