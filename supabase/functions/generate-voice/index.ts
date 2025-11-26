@@ -15,8 +15,13 @@ serve(async (req) => {
     
     console.log("Generating Bytez Suno Bark audio for text:", text?.substring(0, 50));
 
+    // Server-side input validation
     if (!text || text.trim().length === 0) {
       throw new Error("Text is required and cannot be empty");
+    }
+
+    if (text.length > 3000) {
+      throw new Error("Text exceeds maximum length of 3000 characters");
     }
 
     const BYTEZ_API_KEY = Deno.env.get("BYTEZ_API_KEY");
