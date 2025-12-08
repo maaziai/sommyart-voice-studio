@@ -14,6 +14,7 @@ interface RequestBody {
   text: string;
   isMultiSpeaker?: boolean;
   speakers?: Speaker[];
+  voice?: string;
 }
 
 serve(async (req) => {
@@ -22,10 +23,10 @@ serve(async (req) => {
   }
 
   try {
-    const { text, isMultiSpeaker, speakers }: RequestBody = await req.json();
+    const { text, isMultiSpeaker, speakers, voice }: RequestBody = await req.json();
     
     console.log("Generating Google Gemini TTS audio for text:", text?.substring(0, 50));
-    console.log("Multi-speaker mode:", isMultiSpeaker, "Speakers:", speakers?.length);
+    console.log("Multi-speaker mode:", isMultiSpeaker, "Speakers:", speakers?.length, "Voice:", voice);
 
     // Server-side input validation
     if (!text || text.trim().length === 0) {
@@ -61,11 +62,11 @@ serve(async (req) => {
         }
       };
     } else {
-      // Single speaker configuration
+      // Single speaker configuration - use provided voice or default to Kore
       speechConfig = {
         voiceConfig: {
           prebuiltVoiceConfig: {
-            voiceName: "Kore"
+            voiceName: voice || "Kore"
           }
         }
       };
