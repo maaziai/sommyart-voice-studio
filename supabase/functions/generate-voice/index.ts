@@ -5,15 +5,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface Speaker {
+  name: string;
+  voice: string;
+}
+
+interface RequestBody {
+  text: string;
+  isMultiSpeaker?: boolean;
+  speakers?: Speaker[];
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { text } = await req.json();
+    const { text, isMultiSpeaker, speakers }: RequestBody = await req.json();
     
     console.log("Generating Google Gemini TTS audio for text:", text?.substring(0, 50));
+    console.log("Multi-speaker mode:", isMultiSpeaker, "Speakers:", speakers?.length);
 
     // Server-side input validation
     if (!text || text.trim().length === 0) {
@@ -31,6 +43,34 @@ serve(async (req) => {
 
     console.log("Calling Google Gemini 2.5 Flash TTS API");
 
+    // Build speech config based on mode
+    let speechConfig: Record<string, unknown>;
+    
+    if (isMultiSpeaker && speakers && speakers.length >= 2) {
+      // Multi-speaker configuration
+      speechConfig = {
+        multiSpeakerVoiceConfig: {
+          speakerVoiceConfigs: speakers.map(speaker => ({
+            speaker: speaker.name,
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: speaker.voice
+              }
+            }
+          }))
+        }
+      };
+    } else {
+      // Single speaker configuration
+      speechConfig = {
+        voiceConfig: {
+          prebuiltVoiceConfig: {
+            voiceName: "Kore"
+          }
+        }
+      };
+    }
+
     // Call Google Generative AI API
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GOOGLE_API_KEY}`,
@@ -47,18 +87,11 @@ serve(async (req) => {
           }],
           generationConfig: {
             responseModalities: ["AUDIO"],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName: "Kore"
-                }
-              }
-            }
+            speechConfig
           }
         }),
       }
     );
-
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Google API error:", response.status, errorText);
