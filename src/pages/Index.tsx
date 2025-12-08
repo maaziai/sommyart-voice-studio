@@ -9,12 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
 import { SpeakerConfig, Speaker } from "@/components/SpeakerConfig";
 
-const backgroundMusic = [
-  { value: "none", label: "No Music" },
-  { value: "calm_ambient", label: "Calm Ambient" },
-  { value: "inspiring_piano", label: "Inspiring Piano" },
-  { value: "cinematic_bg", label: "Cinematic Background" },
-  { value: "corporate_beat", label: "Corporate Beat" },
+const voiceOptions = [
+  { value: "Kore", label: "Male Voice (Kore)" },
+  { value: "Puck", label: "Female Voice (Puck)" },
 ];
 
 const defaultSpeakers: Speaker[] = [
@@ -24,7 +21,7 @@ const defaultSpeakers: Speaker[] = [
 
 const Index = () => {
   const [text, setText] = useState("");
-  const [music, setMusic] = useState("none");
+  const [selectedVoice, setSelectedVoice] = useState("Kore");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
   const [isMultiSpeaker, setIsMultiSpeaker] = useState(false);
@@ -75,7 +72,8 @@ const Index = () => {
         body: { 
           text,
           isMultiSpeaker,
-          speakers: isMultiSpeaker ? speakers.map(s => ({ name: s.name, voice: s.voice })) : undefined
+          speakers: isMultiSpeaker ? speakers.map(s => ({ name: s.name, voice: s.voice })) : undefined,
+          voice: !isMultiSpeaker ? selectedVoice : undefined
         }
       });
 
@@ -142,7 +140,7 @@ const Index = () => {
             
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Transform your text into expressive AI voiceovers with professional quality. 
-              Choose your voice style, add background music, and bring your content to life.
+              Choose your voice style and bring your content to life.
             </p>
           </div>
         </div>
@@ -183,21 +181,23 @@ const Index = () => {
                 onMultiSpeakerChange={setIsMultiSpeaker}
               />
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-foreground">Background Music</label>
-                <Select value={music} onValueChange={setMusic}>
-                  <SelectTrigger className="bg-background/50 border-border/50">
-                    <SelectValue placeholder="Choose music (optional)" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover border-border z-50">
-                    {backgroundMusic.map((option) => (
-                      <SelectItem key={option.value} value={option.value} className="cursor-pointer">
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {!isMultiSpeaker && (
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-foreground">Voice Selection</label>
+                  <Select value={selectedVoice} onValueChange={setSelectedVoice}>
+                    <SelectTrigger className="bg-background/50 border-border/50">
+                      <SelectValue placeholder="Choose a voice" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border z-50">
+                      {voiceOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value} className="cursor-pointer">
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <Button
                 onClick={handleGenerate}
@@ -288,7 +288,7 @@ const Index = () => {
                 <ul className="text-xs text-muted-foreground space-y-1">
                   <li>• Keep sentences clear and well-punctuated</li>
                   <li>• Use natural language for best results</li>
-                  <li>• Add background music for professional polish</li>
+                  <li>• Try different voices to find your perfect match</li>
                   <li>• Preview before downloading for best results</li>
                 </ul>
               </Card>
@@ -314,9 +314,9 @@ const Index = () => {
             <div className="w-12 h-12 mx-auto rounded-full bg-accent/10 flex items-center justify-center">
               <Volume2 className="w-6 h-6 text-accent" />
             </div>
-            <h3 className="font-semibold">Background Music</h3>
+            <h3 className="font-semibold">Voice Selection</h3>
             <p className="text-sm text-muted-foreground">
-              Add professional soundtracks to enhance your voiceovers
+              Choose between male and female voices for your content
             </p>
           </Card>
 
