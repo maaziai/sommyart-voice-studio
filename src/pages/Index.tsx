@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mic, Download, Volume2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
+import { SpeakerConfig, Speaker } from "@/components/SpeakerConfig";
 
 const backgroundMusic = [
   { value: "none", label: "No Music" },
@@ -16,11 +17,18 @@ const backgroundMusic = [
   { value: "corporate_beat", label: "Corporate Beat" },
 ];
 
+const defaultSpeakers: Speaker[] = [
+  { id: crypto.randomUUID(), name: "Speaker1", voice: "Kore" },
+  { id: crypto.randomUUID(), name: "Speaker2", voice: "Puck" },
+];
+
 const Index = () => {
   const [text, setText] = useState("");
   const [music, setMusic] = useState("none");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
+  const [isMultiSpeaker, setIsMultiSpeaker] = useState(false);
+  const [speakers, setSpeakers] = useState<Speaker[]>(defaultSpeakers);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
 
@@ -61,10 +69,14 @@ const Index = () => {
     setGeneratedAudio(null);
 
     try {
-      console.log("Generating TTS with Bytez Suno Bark");
+      console.log("Generating TTS with Google Gemini");
       
       const { data, error } = await supabase.functions.invoke('generate-voice', {
-        body: { text }
+        body: { 
+          text,
+          isMultiSpeaker,
+          speakers: isMultiSpeaker ? speakers.map(s => ({ name: s.name, voice: s.voice })) : undefined
+        }
       });
 
       if (error) throw error;
@@ -96,7 +108,7 @@ const Index = () => {
     
     const link = document.createElement('a');
     link.href = generatedAudio;
-    link.download = `sommyart-bytez-voice-${Date.now()}.wav`;
+    link.download = `sommyart-gemini-voice-${Date.now()}.wav`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -160,9 +172,16 @@ const Index = () => {
 
               <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                 <p className="text-sm text-muted-foreground">
-                  🎙️ Powered by <span className="font-semibold text-primary">Bytez Suno Bark AI</span> - Natural-sounding voice synthesis
+                  🎙️ Powered by <span className="font-semibold text-primary">Google Gemini 2.5 Flash TTS</span> - Natural-sounding voice synthesis
                 </p>
               </div>
+
+              <SpeakerConfig
+                speakers={speakers}
+                onSpeakersChange={setSpeakers}
+                isMultiSpeaker={isMultiSpeaker}
+                onMultiSpeakerChange={setIsMultiSpeaker}
+              />
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground">Background Music</label>
@@ -287,7 +306,7 @@ const Index = () => {
             </div>
             <h3 className="font-semibold">AI Voice Generation</h3>
             <p className="text-sm text-muted-foreground">
-              Powered by Bytez Suno Bark AI for natural-sounding voice synthesis
+              Powered by Google Gemini 2.5 Flash for natural-sounding voice synthesis
             </p>
           </Card>
 
