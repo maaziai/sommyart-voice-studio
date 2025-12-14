@@ -25,10 +25,17 @@ const splitVoiceSpeakers: Speaker[] = [
   { id: "female", name: "FEMALE", voice: "Puck" },
 ];
 
+// Action tags that should pass through to TTS (not treated as voice switches)
+const ACTION_TAGS = [
+  "pause", "giggle", "giggles", "laugh", "laughs", "sigh", "sighs", 
+  "gasp", "gasps", "cough", "coughs", "clears throat", "whisper", "whispers",
+  "yawn", "yawns", "sob", "sobs", "cry", "cries", "chuckle", "chuckles",
+  "sniff", "sniffs", "hum", "hums", "groan", "groans", "moan", "moans"
+];
+
 // Parse script with [MALE] and [FEMALE] tags and convert to speaker format
+// Action tags like [pause], [giggles] are preserved and passed to TTS
 const parseSplitVoiceScript = (script: string): string => {
-  // Replace [MALE] with "MALE: " and [FEMALE] with "FEMALE: " format
-  // This converts the tagged format to the multi-speaker format expected by the API
   let parsed = script;
   
   // Handle [MALE] tags - convert to speaker format
@@ -46,9 +53,11 @@ const parseSplitVoiceScript = (script: string): string => {
   return parsed.trim();
 };
 
-// Check if script contains split voice tags
+// Check if script contains split voice tags (MALE/FEMALE only, not action tags)
 const hasSplitVoiceTags = (script: string): boolean => {
-  return /\[(MALE|FEMALE)\]/i.test(script);
+  // Match [MALE] or [FEMALE] but not action tags
+  const voiceTagPattern = /\[(MALE|FEMALE)\]/i;
+  return voiceTagPattern.test(script);
 };
 
 type VoiceMode = "single" | "multi" | "split";
@@ -284,10 +293,15 @@ const Index = () => {
                     Use <code className="px-1 py-0.5 bg-muted rounded text-primary">[MALE]</code> and{" "}
                     <code className="px-1 py-0.5 bg-muted rounded text-primary">[FEMALE]</code> tags to switch between voices.
                   </p>
+                  <p className="text-xs text-muted-foreground">
+                    Add actions like <code className="px-1 py-0.5 bg-muted rounded text-accent">[pause]</code>,{" "}
+                    <code className="px-1 py-0.5 bg-muted rounded text-accent">[giggles]</code>,{" "}
+                    <code className="px-1 py-0.5 bg-muted rounded text-accent">[sigh]</code> for expressive speech.
+                  </p>
                   <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded font-mono">
                     <p>[MALE] Hello, welcome to our show!</p>
-                    <p>[FEMALE] Thanks for having me today.</p>
-                    <p>[MALE] Let's get started.</p>
+                    <p>[FEMALE] [giggles] Thanks for having me today.</p>
+                    <p>[MALE] [pause] Let's get started.</p>
                   </div>
                 </div>
               )}
