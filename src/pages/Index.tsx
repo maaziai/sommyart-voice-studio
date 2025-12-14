@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mic, Download, Volume2 } from "lucide-react";
+import { Loader2, Mic, Download, Volume2, Split } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
 import { SpeakerConfig, Speaker } from "@/components/SpeakerConfig";
@@ -19,15 +19,53 @@ const defaultSpeakers: Speaker[] = [
   { id: crypto.randomUUID(), name: "Speaker2", voice: "Puck" },
 ];
 
+// Split voice speakers - fixed MALE and FEMALE mapping
+const splitVoiceSpeakers: Speaker[] = [
+  { id: "male", name: "MALE", voice: "Kore" },
+  { id: "female", name: "FEMALE", voice: "Puck" },
+];
+
+// Parse script with [MALE] and [FEMALE] tags and convert to speaker format
+const parseSplitVoiceScript = (script: string): string => {
+  // Replace [MALE] with "MALE: " and [FEMALE] with "FEMALE: " format
+  // This converts the tagged format to the multi-speaker format expected by the API
+  let parsed = script;
+  
+  // Handle [MALE] tags - convert to speaker format
+  parsed = parsed.replace(/\[MALE\]\s*/gi, "\nMALE: ");
+  
+  // Handle [FEMALE] tags - convert to speaker format  
+  parsed = parsed.replace(/\[FEMALE\]\s*/gi, "\nFEMALE: ");
+  
+  // Clean up any leading newlines
+  parsed = parsed.replace(/^\n+/, "");
+  
+  // Clean up multiple consecutive newlines
+  parsed = parsed.replace(/\n{3,}/g, "\n\n");
+  
+  return parsed.trim();
+};
+
+// Check if script contains split voice tags
+const hasSplitVoiceTags = (script: string): boolean => {
+  return /\[(MALE|FEMALE)\]/i.test(script);
+};
+
+type VoiceMode = "single" | "multi" | "split";
+
 const Index = () => {
   const [text, setText] = useState("");
   const [selectedVoice, setSelectedVoice] = useState("Kore");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
-  const [isMultiSpeaker, setIsMultiSpeaker] = useState(false);
+  const [voiceMode, setVoiceMode] = useState<VoiceMode>("single");
   const [speakers, setSpeakers] = useState<Speaker[]>(defaultSpeakers);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
+
+  // Legacy compatibility
+  const isMultiSpeaker = voiceMode === "multi";
+  const setIsMultiSpeaker = (enabled: boolean) => setVoiceMode(enabled ? "multi" : "single");
 
   // Auto-play when new audio is generated
   useEffect(() => {
@@ -66,14 +104,43 @@ const Index = () => {
     setGeneratedAudio(null);
 
     try {
-      console.log("Generating TTS with Google Gemini");
+      console.log("Generating TTS with Google Gemini, mode:", voiceMode);
+      
+      let processedText = text;
+      let useSpeakers: { name: string; voice: string }[] | undefined;
+      let useVoice: string | undefined;
+      let useMultiSpeaker = false;
+
+      if (voiceMode === "split") {
+        // Split voice mode - parse [MALE] and [FEMALE] tags
+        if (!hasSplitVoiceTags(text)) {
+          toast({
+            title: "No Voice Tags Found",
+            description: "Please use [MALE] and [FEMALE] tags to mark different speakers in your script.",
+            variant: "destructive",
+          });
+          setIsGenerating(false);
+          return;
+        }
+        processedText = parseSplitVoiceScript(text);
+        useSpeakers = splitVoiceSpeakers.map(s => ({ name: s.name, voice: s.voice }));
+        useMultiSpeaker = true;
+        console.log("Parsed split voice script:", processedText);
+      } else if (voiceMode === "multi") {
+        // Multi-speaker mode
+        useSpeakers = speakers.map(s => ({ name: s.name, voice: s.voice }));
+        useMultiSpeaker = true;
+      } else {
+        // Single speaker mode
+        useVoice = selectedVoice;
+      }
       
       const { data, error } = await supabase.functions.invoke('generate-voice', {
         body: { 
-          text,
-          isMultiSpeaker,
-          speakers: isMultiSpeaker ? speakers.map(s => ({ name: s.name, voice: s.voice })) : undefined,
-          voice: !isMultiSpeaker ? selectedVoice : undefined
+          text: processedText,
+          isMultiSpeaker: useMultiSpeaker,
+          speakers: useSpeakers,
+          voice: useVoice
         }
       });
 
@@ -174,14 +241,69 @@ const Index = () => {
                 </p>
               </div>
 
-              <SpeakerConfig
-                speakers={speakers}
-                onSpeakersChange={setSpeakers}
-                isMultiSpeaker={isMultiSpeaker}
-                onMultiSpeakerChange={setIsMultiSpeaker}
-              />
+              {/* Voice Mode Selection */}
+              <div className="space-y-3">
+                <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Mic className="w-4 h-4 text-primary" />
+                  Voice Mode
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    variant={voiceMode === "single" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setVoiceMode("single")}
+                    className="w-full"
+                  >
+                    Single
+                  </Button>
+                  <Button
+                    variant={voiceMode === "multi" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setVoiceMode("multi")}
+                    className="w-full"
+                  >
+                    Multi
+                  </Button>
+                  <Button
+                    variant={voiceMode === "split" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setVoiceMode("split")}
+                    className="w-full"
+                  >
+                    <Split className="w-3 h-3 mr-1" />
+                    Split
+                  </Button>
+                </div>
+              </div>
 
-              {!isMultiSpeaker && (
+              {/* Split Voice Instructions */}
+              {voiceMode === "split" && (
+                <div className="p-4 bg-primary/5 rounded-lg border border-primary/20 space-y-3">
+                  <p className="text-sm font-medium text-foreground">Split Voice Mode</p>
+                  <p className="text-xs text-muted-foreground">
+                    Use <code className="px-1 py-0.5 bg-muted rounded text-primary">[MALE]</code> and{" "}
+                    <code className="px-1 py-0.5 bg-muted rounded text-primary">[FEMALE]</code> tags to switch between voices.
+                  </p>
+                  <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded font-mono">
+                    <p>[MALE] Hello, welcome to our show!</p>
+                    <p>[FEMALE] Thanks for having me today.</p>
+                    <p>[MALE] Let's get started.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Multi-Speaker Config */}
+              {voiceMode === "multi" && (
+                <SpeakerConfig
+                  speakers={speakers}
+                  onSpeakersChange={setSpeakers}
+                  isMultiSpeaker={true}
+                  onMultiSpeakerChange={() => {}}
+                />
+              )}
+
+              {/* Single Voice Selection */}
+              {voiceMode === "single" && (
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-foreground">Voice Selection</label>
                   <Select value={selectedVoice} onValueChange={setSelectedVoice}>
