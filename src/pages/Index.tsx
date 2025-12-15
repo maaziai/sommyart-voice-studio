@@ -13,7 +13,7 @@ const voiceOptions = [
   { value: "Kore", label: "Male Voice (Kore)" },
   { value: "Puck", label: "Female Voice (Puck)" },
   { value: "Charon", label: "Josmart (Male Deep)" },
-  { value: "Kore", label: "Maazi (Male Playful)" },
+  { value: "Orus", label: "Maazi (Male Elderly)" },
   { value: "Leda", label: "Chisom (Female Soft)" },
   { value: "Aoede", label: "Amara (Female Warm)" },
 ];
