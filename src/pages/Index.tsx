@@ -105,10 +105,10 @@ const Index = () => {
       return;
     }
 
-    if (text.length > 3000) {
+    if (text.length > 1500) {
       toast({
         title: "Text Too Long",
-        description: "Please keep your text under 3000 characters.",
+        description: "Please keep your text under 1500 characters.",
         variant: "destructive",
       });
       return;
@@ -247,8 +247,8 @@ const Index = () => {
                   onChange={(e) => setText(e.target.value)}
                   className="min-h-[200px] resize-none bg-background/50 border-border/50 focus:border-primary transition-[var(--transition-smooth)]"
                 />
-                <p className="text-xs text-muted-foreground">
-                  {text.length} characters
+                <p className={`text-xs ${text.length > 1500 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {text.length}/1500 characters
                 </p>
               </div>
 
