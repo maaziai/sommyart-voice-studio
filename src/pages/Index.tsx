@@ -23,11 +23,11 @@ const defaultSpeakers: Speaker[] = [
   { id: crypto.randomUUID(), name: "Speaker2", voice: "Puck" },
 ];
 
-// Split voice speakers - fixed MALE and FEMALE mapping
-const splitVoiceSpeakers: Speaker[] = [
-  { id: "male", name: "MALE", voice: "Kore" },
-  { id: "female", name: "FEMALE", voice: "Puck" },
-];
+// Default split voice mapping
+const defaultSplitVoices = {
+  male: "Kore",
+  female: "Puck",
+};
 
 // Action tags that should pass through to TTS (not treated as voice switches)
 const ACTION_TAGS = [
@@ -73,6 +73,7 @@ const Index = () => {
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("single");
   const [speakers, setSpeakers] = useState<Speaker[]>(defaultSpeakers);
+  const [splitVoices, setSplitVoices] = useState(defaultSplitVoices);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
 
@@ -136,7 +137,10 @@ const Index = () => {
           return;
         }
         processedText = parseSplitVoiceScript(text);
-        useSpeakers = splitVoiceSpeakers.map(s => ({ name: s.name, voice: s.voice }));
+        useSpeakers = [
+          { name: "MALE", voice: splitVoices.male },
+          { name: "FEMALE", voice: splitVoices.female },
+        ];
         useMultiSpeaker = true;
         console.log("Parsed split voice script:", processedText);
       } else if (voiceMode === "multi") {
@@ -291,8 +295,43 @@ const Index = () => {
 
               {/* Split Voice Instructions */}
               {voiceMode === "split" && (
-                <div className="p-4 bg-primary/5 rounded-lg border border-primary/20 space-y-3">
+                <div className="p-4 bg-primary/5 rounded-lg border border-primary/20 space-y-4">
                   <p className="text-sm font-medium text-foreground">Split Voice Mode</p>
+                  
+                  {/* Voice Selection for Split Mode */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">[MALE] Voice</label>
+                      <Select value={splitVoices.male} onValueChange={(v) => setSplitVoices(prev => ({ ...prev, male: v }))}>
+                        <SelectTrigger className="bg-background/50 border-border/50 h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover border-border z-50">
+                          {voiceOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">[FEMALE] Voice</label>
+                      <Select value={splitVoices.female} onValueChange={(v) => setSplitVoices(prev => ({ ...prev, female: v }))}>
+                        <SelectTrigger className="bg-background/50 border-border/50 h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover border-border z-50">
+                          {voiceOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   <p className="text-xs text-muted-foreground">
                     Use <code className="px-1 py-0.5 bg-muted rounded text-primary">[MALE]</code> and{" "}
                     <code className="px-1 py-0.5 bg-muted rounded text-primary">[FEMALE]</code> tags to switch between voices.
