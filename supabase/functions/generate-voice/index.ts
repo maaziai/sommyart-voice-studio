@@ -1,6 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
-import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,15 +17,15 @@ interface RequestBody {
   voice?: string;
 }
 
-// Create WAV header for PCM audio data
-function createWavHeader(pcmDataLength: number, sampleRate = 24000, numChannels = 1, bitsPerSample = 16): Uint8Array {
+// Create WAV header for PCM audio data - returns base64 string
+function createWavHeaderBase64(pcmDataLength: number, sampleRate = 24000, numChannels = 1, bitsPerSample = 16): string {
   const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
   const blockAlign = numChannels * (bitsPerSample / 8);
   const dataSize = pcmDataLength;
   const chunkSize = 36 + dataSize;
 
-  const header = new ArrayBuffer(44);
-  const view = new DataView(header);
+  const header = new Uint8Array(44);
+  const view = new DataView(header.buffer);
 
   // RIFF chunk descriptor
   view.setUint32(0, 0x52494646, false); // "RIFF"
@@ -48,7 +46,18 @@ function createWavHeader(pcmDataLength: number, sampleRate = 24000, numChannels 
   view.setUint32(36, 0x64617461, false); // "data"
   view.setUint32(40, dataSize, true); // Subchunk2Size
 
-  return new Uint8Array(header);
+  // Convert to base64 using btoa
+  let binary = '';
+  for (let i = 0; i < header.length; i++) {
+    binary += String.fromCharCode(header[i]);
+  }
+  return btoa(binary);
+}
+
+// Calculate PCM data length from base64 string length
+function getPcmLengthFromBase64(base64Length: number): number {
+  // Base64 encodes 3 bytes into 4 characters
+  return Math.floor((base64Length * 3) / 4);
 }
 
 serve(async (req) => {
@@ -62,13 +71,13 @@ serve(async (req) => {
     console.log("Generating Google Gemini TTS audio for text:", text?.substring(0, 50));
     console.log("Multi-speaker mode:", isMultiSpeaker, "Speakers:", speakers?.length, "Voice:", voice);
 
-    // Server-side input validation
+    // Server-side input validation - reduced limit to prevent memory issues
     if (!text || text.trim().length === 0) {
       throw new Error("Text is required and cannot be empty");
     }
 
-    if (text.length > 3000) {
-      throw new Error("Text exceeds maximum length of 3000 characters");
+    if (text.length > 1500) {
+      throw new Error("Text exceeds maximum length of 1500 characters. Please use shorter text.");
     }
 
     const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
@@ -136,30 +145,28 @@ serve(async (req) => {
 
     const result = await response.json();
     
-    // Extract audio data and MIME type from response
+    // Extract audio data (base64 PCM) from response
     const inlineData = result.candidates?.[0]?.content?.parts?.[0]?.inlineData;
-    const audioData = inlineData?.data;
-    const mimeType = inlineData?.mimeType || "audio/L16;rate=24000";
+    const pcmBase64 = inlineData?.data;
     
-    if (!audioData) {
+    if (!pcmBase64) {
       throw new Error("No audio data in response");
     }
 
-    console.log("TTS generation completed, MIME type:", mimeType);
+    console.log("TTS generation completed, PCM base64 length:", pcmBase64.length);
 
-    // Decode the base64 PCM data
-    const pcmData = base64Decode(audioData);
-    
-    // Create WAV header and combine with PCM data
-    const wavHeader = createWavHeader(pcmData.length);
-    const wavData = new Uint8Array(wavHeader.length + pcmData.length);
-    wavData.set(wavHeader, 0);
-    wavData.set(pcmData, wavHeader.length);
-    
-    // Encode the complete WAV file as base64
-    const wavBase64 = base64Encode(wavData.buffer);
+    // Calculate PCM data length and create WAV header as base64
+    const pcmLength = getPcmLengthFromBase64(pcmBase64.length);
+    const wavHeaderBase64 = createWavHeaderBase64(pcmLength);
 
-    console.log("WAV file created, size:", wavData.length, "bytes");
+    // Combine header and PCM data as base64 strings
+    // We decode both to binary, concatenate, then re-encode
+    // This is more memory efficient than creating large Uint8Arrays
+    const headerBinary = atob(wavHeaderBase64);
+    const pcmBinary = atob(pcmBase64);
+    const wavBase64 = btoa(headerBinary + pcmBinary);
+
+    console.log("WAV file created, approximate size:", Math.floor((wavBase64.length * 3) / 4), "bytes");
 
     return new Response(
       JSON.stringify({
