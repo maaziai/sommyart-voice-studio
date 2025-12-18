@@ -221,7 +221,7 @@ const Index = () => {
             />
             
             <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent leading-tight">
-              Sommyart Text-to-Voice Studio
+              Sommyart Labs
             </h1>
             
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
