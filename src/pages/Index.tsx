@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mic, Download, Volume2, Split } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
+import sommyartLogo from "@/assets/sommyart-logo.jpg";
 import { SpeakerConfig, Speaker } from "@/components/SpeakerConfig";
 
 const voiceOptions = [
@@ -213,10 +214,11 @@ const Index = () => {
         
         <div className="relative container mx-auto px-4 py-16 md:py-24">
           <div className="max-w-4xl mx-auto text-center space-y-6">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4">
-              <Volume2 className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">AI-Powered Voice Studio</span>
-            </div>
+            <img 
+              src={sommyartLogo} 
+              alt="Sommyart Labs Logo" 
+              className="w-24 h-24 md:w-32 md:h-32 mx-auto rounded-2xl shadow-lg mb-4"
+            />
             
             <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent leading-tight">
               Sommyart Text-to-Voice Studio
