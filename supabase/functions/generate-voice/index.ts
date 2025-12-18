@@ -76,8 +76,8 @@ serve(async (req) => {
       throw new Error("Text is required and cannot be empty");
     }
 
-    if (text.length > 1500) {
-      throw new Error("Text exceeds maximum length of 1500 characters. Please use shorter text.");
+    if (text.length > 5000) {
+      throw new Error("Text exceeds maximum length of 5000 characters. Please use shorter text.");
     }
 
     const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
