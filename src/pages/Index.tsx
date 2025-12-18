@@ -240,7 +240,7 @@ const Index = () => {
             <div className="space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Mic className="w-4 h-4 text-primary" />
+                  <Mic className="w-4 h-4 text-primary icon-3d-subtle" />
                   Your Script
                 </label>
                 <Textarea
@@ -263,7 +263,7 @@ const Index = () => {
               {/* Voice Mode Selection */}
               <div className="space-y-3">
                 <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Mic className="w-4 h-4 text-primary" />
+                  <Mic className="w-4 h-4 text-primary icon-3d-subtle" />
                   Voice Mode
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -289,7 +289,7 @@ const Index = () => {
                     onClick={() => setVoiceMode("split")}
                     className="w-full"
                   >
-                    <Split className="w-3 h-3 mr-1" />
+                    <Split className="w-3 h-3 mr-1 icon-3d-subtle" />
                     Split
                   </Button>
                 </div>
@@ -394,7 +394,7 @@ const Index = () => {
                   </>
                 ) : (
                   <>
-                    <Mic className="w-5 h-5" />
+                    <Mic className="w-5 h-5 icon-3d" />
                     Generate Voice
                   </>
                 )}
@@ -405,7 +405,7 @@ const Index = () => {
             <div className="space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Volume2 className="w-4 h-4 text-primary" />
+                  <Volume2 className="w-4 h-4 text-primary icon-3d-subtle" />
                   Preview & Download
                 </label>
                 
@@ -413,7 +413,7 @@ const Index = () => {
                   {!generatedAudio && !isGenerating && (
                     <div className="text-center space-y-3">
                       <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-                        <Volume2 className="w-8 h-8 text-primary/50" />
+                        <Volume2 className="w-8 h-8 text-primary/50 icon-3d" />
                       </div>
                       <p className="text-sm text-muted-foreground">
                         Your generated voice will appear here
@@ -434,7 +434,7 @@ const Index = () => {
                     <div className="w-full space-y-4">
                       <div className="flex items-center justify-center">
                         <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center animate-pulse">
-                          <Volume2 className="w-8 h-8 text-primary" />
+                          <Volume2 className="w-8 h-8 text-primary icon-3d" />
                         </div>
                       </div>
                       
@@ -459,7 +459,7 @@ const Index = () => {
                   size="lg"
                   className="w-full"
                 >
-                  <Download className="w-5 h-5" />
+                  <Download className="w-5 h-5 icon-3d-subtle" />
                   Download Voice
                 </Button>
               )}
@@ -483,7 +483,7 @@ const Index = () => {
         <div className="grid md:grid-cols-3 gap-6">
           <Card className="p-6 text-center space-y-3 bg-gradient-to-br from-card to-muted/20 border-border/50">
             <div className="w-12 h-12 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-              <Mic className="w-6 h-6 text-primary" />
+              <Mic className="w-6 h-6 text-primary icon-3d" />
             </div>
             <h3 className="font-semibold">AI Voice Generation</h3>
             <p className="text-sm text-muted-foreground">
@@ -493,7 +493,7 @@ const Index = () => {
 
           <Card className="p-6 text-center space-y-3 bg-gradient-to-br from-card to-muted/20 border-border/50">
             <div className="w-12 h-12 mx-auto rounded-full bg-accent/10 flex items-center justify-center">
-              <Volume2 className="w-6 h-6 text-accent" />
+              <Volume2 className="w-6 h-6 text-accent icon-3d" />
             </div>
             <h3 className="font-semibold">Voice Selection</h3>
             <p className="text-sm text-muted-foreground">
@@ -503,7 +503,7 @@ const Index = () => {
 
           <Card className="p-6 text-center space-y-3 bg-gradient-to-br from-card to-muted/20 border-border/50">
             <div className="w-12 h-12 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-              <Download className="w-6 h-6 text-primary" />
+              <Download className="w-6 h-6 text-primary icon-3d" />
             </div>
             <h3 className="font-semibold">Instant Download</h3>
             <p className="text-sm text-muted-foreground">
