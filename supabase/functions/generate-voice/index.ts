@@ -5,6 +5,31 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Valid voice names for validation
+const VALID_VOICES = ['Kore', 'Puck', 'Charon', 'Fenrir', 'Aoede', 'Leda', 'Orus', 'Zephyr'];
+
+// Simple in-memory rate limiting (resets on function cold start)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute per IP
+
+function checkRateLimit(clientIp: string): boolean {
+  const now = Date.now();
+  const clientData = rateLimitMap.get(clientIp);
+  
+  if (!clientData || now > clientData.resetTime) {
+    rateLimitMap.set(clientIp, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  
+  if (clientData.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+  
+  clientData.count++;
+  return true;
+}
+
 interface Speaker {
   name: string;
   voice: string;
@@ -66,6 +91,26 @@ serve(async (req) => {
   }
 
   try {
+    // Extract client IP for rate limiting
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
+                     req.headers.get("x-real-ip") || 
+                     "unknown";
+    
+    // Check rate limit
+    if (!checkRateLimit(clientIp)) {
+      console.warn("Rate limit exceeded for IP:", clientIp);
+      return new Response(
+        JSON.stringify({ 
+          error: "Too many requests. Please wait a moment before trying again.",
+          success: false 
+        }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const { text, isMultiSpeaker, speakers, voice }: RequestBody = await req.json();
     
     console.log("Generating Google Gemini TTS audio for text:", text?.substring(0, 50));
@@ -80,9 +125,30 @@ serve(async (req) => {
       throw new Error("Text exceeds maximum length of 5000 characters. Please use shorter text.");
     }
 
+    // Validate voice parameter
+    if (voice && !VALID_VOICES.includes(voice)) {
+      console.warn("Invalid voice parameter received:", voice);
+      throw new Error("Invalid voice selection. Please choose a valid voice.");
+    }
+
+    // Validate speaker voices if multi-speaker mode
+    if (isMultiSpeaker && speakers && speakers.length > 0) {
+      for (const speaker of speakers) {
+        if (!speaker.voice || !VALID_VOICES.includes(speaker.voice)) {
+          console.warn("Invalid speaker voice:", speaker.voice);
+          throw new Error("Invalid speaker voice selection. Please choose valid voices.");
+        }
+        // Validate speaker name (basic sanitization)
+        if (!speaker.name || speaker.name.length > 50 || !/^[\w\s-]+$/i.test(speaker.name)) {
+          throw new Error("Invalid speaker name. Names should be alphanumeric and under 50 characters.");
+        }
+      }
+    }
+
     const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
     if (!GOOGLE_API_KEY) {
-      throw new Error("GOOGLE_API_KEY is not configured");
+      console.error("GOOGLE_API_KEY not configured");
+      throw new Error("Voice generation service is not properly configured.");
     }
 
     console.log("Calling Google Gemini 2.5 Flash TTS API");
@@ -140,7 +206,15 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Google API error:", response.status, errorText);
-      throw new Error(`TTS generation failed: ${response.status} - ${errorText}`);
+      
+      // Return generic error messages to client
+      if (response.status === 429) {
+        throw new Error("Service is currently busy. Please try again in a moment.");
+      } else if (response.status >= 500) {
+        throw new Error("Voice generation service temporarily unavailable.");
+      } else {
+        throw new Error("Voice generation failed. Please check your input and try again.");
+      }
     }
 
     const result = await response.json();
@@ -150,7 +224,8 @@ serve(async (req) => {
     const pcmBase64 = inlineData?.data;
     
     if (!pcmBase64) {
-      throw new Error("No audio data in response");
+      console.error("No audio data in Google API response");
+      throw new Error("Voice generation failed. Please try again.");
     }
 
     console.log("TTS generation completed, PCM base64 length:", pcmBase64.length);
@@ -182,7 +257,7 @@ serve(async (req) => {
     console.error("Error in generate-voice function:", error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Unknown error occurred",
+        error: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
         success: false 
       }),
       {
