@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mic, Download, Volume2, Split } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Loader2, Mic, Download, Volume2, Split, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
 import sommyartLogo from "@/assets/sommyart-logo.jpg";
@@ -77,6 +79,15 @@ const Index = () => {
   const [splitVoices, setSplitVoices] = useState(defaultSplitVoices);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
 
   // Legacy compatibility
   const isMultiSpeaker = voiceMode === "multi";
@@ -202,8 +213,35 @@ const Index = () => {
     });
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
+
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Header with logout */}
+      <div className="absolute top-4 right-4 z-10">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSignOut}
+          className="bg-background/50 backdrop-blur-sm"
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Sign Out
+        </Button>
+      </div>
+
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div 
