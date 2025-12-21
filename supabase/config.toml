@@ -1,4 +1,4 @@
 project_id = "qmceamjrodutpdpeigya"
 
 [functions.generate-voice]
-verify_jwt = false
+verify_jwt = true
