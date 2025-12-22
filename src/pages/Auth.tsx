@@ -18,10 +18,9 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   
-  const { user, loading, signIn, signUp, signInWithMagicLink, isAdminEmail } = useAuth();
+  const { user, loading, signIn, signUp, signInAsAdmin, isAdminEmail } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -64,9 +63,9 @@ const Auth = () => {
     setIsLoading(true);
     
     try {
-      // Admin gets magic link (passwordless)
+      // Admin gets instant login (no password or email needed)
       if (isAdmin) {
-        const { error } = await signInWithMagicLink(email);
+        const { error } = await signInAsAdmin();
         if (error) {
           toast({
             title: 'Error',
@@ -74,12 +73,13 @@ const Auth = () => {
             variant: 'destructive',
           });
         } else {
-          setMagicLinkSent(true);
           toast({
-            title: 'Magic Link Sent!',
-            description: 'Check your email for a login link.',
+            title: 'Welcome Admin!',
+            description: 'You have successfully logged in.',
           });
+          navigate('/studio');
         }
+        setIsLoading(false);
         return;
       }
 
@@ -144,41 +144,6 @@ const Auth = () => {
     );
   }
 
-  if (magicLinkSent) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="fixed inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        </div>
-
-        <Card className="relative w-full max-w-md p-8 bg-card/95 backdrop-blur-sm border-border/50 shadow-xl text-center">
-          <div className="mb-6">
-            <div className="w-16 h-16 mx-auto bg-primary/20 rounded-full flex items-center justify-center mb-4">
-              <Mail className="w-8 h-8 text-primary" />
-            </div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">Check Your Email</h1>
-            <p className="text-muted-foreground">
-              We sent a magic link to <span className="text-primary font-medium">{email}</span>
-            </p>
-          </div>
-          <p className="text-sm text-muted-foreground mb-6">
-            Click the link in your email to sign in. The link will expire in 1 hour.
-          </p>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setMagicLinkSent(false);
-              setEmail('');
-            }}
-          >
-            Use a different email
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       {/* Background effects */}
@@ -199,7 +164,7 @@ const Auth = () => {
           </h1>
           <p className="text-muted-foreground text-sm">
             {isAdmin 
-              ? 'Sign in with magic link (no password needed)'
+              ? 'Instant admin access (no password needed)'
               : isLogin 
                 ? 'Sign in to access your voice studio' 
                 : 'Sign up to start generating AI voices'}
@@ -267,12 +232,12 @@ const Auth = () => {
             {isLoading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                {isAdmin ? 'Sending link...' : isLogin ? 'Signing in...' : 'Creating account...'}
+                {isAdmin ? 'Signing in...' : isLogin ? 'Signing in...' : 'Creating account...'}
               </>
             ) : (
               <>
-                {isAdmin ? <Mail className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                {isAdmin ? 'Send Magic Link' : isLogin ? 'Sign In' : 'Create Account'}
+                {isAdmin ? <Sparkles className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                {isAdmin ? 'Sign In as Admin' : isLogin ? 'Sign In' : 'Create Account'}
               </>
             )}
           </Button>
