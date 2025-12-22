@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 const ADMIN_EMAIL = 'josiahbenmoshe@gmail.com';
+const ADMIN_PASSWORD = 'SommyArt2024Admin!';
 
 interface AuthContextType {
   user: User | null;
@@ -10,7 +11,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithMagicLink: (email: string) => Promise<{ error: Error | null }>;
+  signInAsAdmin: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   isAdminEmail: (email: string) => boolean;
 }
@@ -67,14 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const signInWithMagicLink = async (email: string) => {
-    const redirectUrl = `${window.location.origin}/studio`;
-    
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: redirectUrl
-      }
+  const signInAsAdmin = async () => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: ADMIN_EMAIL,
+      password: ADMIN_PASSWORD,
     });
     return { error: error as Error | null };
   };
@@ -84,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signInWithMagicLink, signOut, isAdminEmail }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signInAsAdmin, signOut, isAdminEmail }}>
       {children}
     </AuthContext.Provider>
   );
