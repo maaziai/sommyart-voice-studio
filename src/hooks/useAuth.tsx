@@ -2,13 +2,17 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
+const ADMIN_EMAIL = 'josiahbenmoshe@gmail.com';
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithMagicLink: (email: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  isAdminEmail: (email: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,6 +42,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const isAdminEmail = (email: string): boolean => {
+    return email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  };
+
   const signUp = async (email: string, password: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
@@ -59,12 +67,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
+  const signInWithMagicLink = async (email: string) => {
+    const redirectUrl = `${window.location.origin}/studio`;
+    
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: redirectUrl
+      }
+    });
+    return { error: error as Error | null };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signInWithMagicLink, signOut, isAdminEmail }}>
       {children}
     </AuthContext.Provider>
   );
