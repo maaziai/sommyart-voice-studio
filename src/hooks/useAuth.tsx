@@ -14,6 +14,8 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
   isAdmin: boolean;
+  resetPasswordForEmail: (email: string) => Promise<{ error: Error | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -105,6 +107,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoles([]);
   };
 
+  const resetPasswordForEmail = async (email: string) => {
+    const redirectUrl = `${window.location.origin}/auth?mode=reset`;
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl
+    });
+    return { error: error as Error | null };
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+    return { error: error as Error | null };
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -115,7 +133,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn, 
       signOut, 
       hasRole,
-      isAdmin 
+      isAdmin,
+      resetPasswordForEmail,
+      updatePassword
     }}>
       {children}
     </AuthContext.Provider>
