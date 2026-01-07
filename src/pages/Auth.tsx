@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Mail, Lock, Mic, Sparkles } from 'lucide-react';
+import { Loader2, Mail, Lock, Mic } from 'lucide-react';
 import sommyartLogo from '@/assets/sommyart-logo.jpg';
 
 // Validation schemas
@@ -20,11 +20,9 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   
-  const { user, loading, signIn, signUp, signInAsAdmin, isAdminEmail } = useAuth();
+  const { user, loading, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  const isAdmin = isAdminEmail(email);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -41,12 +39,9 @@ const Auth = () => {
       newErrors.email = emailResult.error.errors[0].message;
     }
     
-    // Only validate password if not admin email
-    if (!isAdmin) {
-      const passwordResult = passwordSchema.safeParse(password);
-      if (!passwordResult.success) {
-        newErrors.password = passwordResult.error.errors[0].message;
-      }
+    const passwordResult = passwordSchema.safeParse(password);
+    if (!passwordResult.success) {
+      newErrors.password = passwordResult.error.errors[0].message;
     }
     
     setErrors(newErrors);
@@ -63,27 +58,6 @@ const Auth = () => {
     setIsLoading(true);
     
     try {
-      // Admin gets instant login (no password or email needed)
-      if (isAdmin) {
-        const { error } = await signInAsAdmin();
-        if (error) {
-          toast({
-            title: 'Error',
-            description: error.message,
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Welcome Admin!',
-            description: 'You have successfully logged in.',
-          });
-          navigate('/studio');
-        }
-        setIsLoading(false);
-        return;
-      }
-
-      // Regular users use password
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) {
@@ -160,14 +134,12 @@ const Auth = () => {
             className="w-16 h-16 mx-auto rounded-xl shadow-lg mb-4"
           />
           <h1 className="text-2xl font-bold text-foreground mb-2">
-            {isAdmin ? 'Admin Access' : isLogin ? 'Welcome Back' : 'Create Account'}
+            {isLogin ? 'Welcome Back' : 'Create Account'}
           </h1>
           <p className="text-muted-foreground text-sm">
-            {isAdmin 
-              ? 'Instant admin access (no password needed)'
-              : isLogin 
-                ? 'Sign in to access your voice studio' 
-                : 'Sign up to start generating AI voices'}
+            {isLogin 
+              ? 'Sign in to access your voice studio' 
+              : 'Sign up to start generating AI voices'}
           </p>
         </div>
 
@@ -176,12 +148,6 @@ const Auth = () => {
             <label className="text-sm font-medium text-foreground flex items-center gap-2">
               <Mail className="w-4 h-4 text-primary" />
               Email
-              {isAdmin && (
-                <span className="ml-auto flex items-center gap-1 text-xs text-primary">
-                  <Sparkles className="w-3 h-3" />
-                  Admin
-                </span>
-              )}
             </label>
             <Input
               type="email"
@@ -199,28 +165,26 @@ const Auth = () => {
             )}
           </div>
 
-          {!isAdmin && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                <Lock className="w-4 h-4 text-primary" />
-                Password
-              </label>
-              <Input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (errors.password) setErrors(prev => ({ ...prev, password: undefined }));
-                }}
-                className={`bg-background/50 ${errors.password ? 'border-destructive' : 'border-border/50'}`}
-                disabled={isLoading}
-              />
-              {errors.password && (
-                <p className="text-xs text-destructive">{errors.password}</p>
-              )}
-            </div>
-          )}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+              <Lock className="w-4 h-4 text-primary" />
+              Password
+            </label>
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errors.password) setErrors(prev => ({ ...prev, password: undefined }));
+              }}
+              className={`bg-background/50 ${errors.password ? 'border-destructive' : 'border-border/50'}`}
+              disabled={isLoading}
+            />
+            {errors.password && (
+              <p className="text-xs text-destructive">{errors.password}</p>
+            )}
+          </div>
 
           <Button
             type="submit"
@@ -232,35 +196,33 @@ const Auth = () => {
             {isLoading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                {isAdmin ? 'Signing in...' : isLogin ? 'Signing in...' : 'Creating account...'}
+                {isLogin ? 'Signing in...' : 'Creating account...'}
               </>
             ) : (
               <>
-                {isAdmin ? <Sparkles className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                {isAdmin ? 'Sign In as Admin' : isLogin ? 'Sign In' : 'Create Account'}
+                <Mic className="w-5 h-5" />
+                {isLogin ? 'Sign In' : 'Create Account'}
               </>
             )}
           </Button>
         </form>
 
-        {!isAdmin && (
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              {isLogin ? "Don't have an account? " : 'Already have an account? '}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setErrors({});
-                }}
-                className="text-primary hover:underline font-medium"
-                disabled={isLoading}
-              >
-                {isLogin ? 'Sign up' : 'Sign in'}
-              </button>
-            </p>
-          </div>
-        )}
+        <div className="mt-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            {isLogin ? "Don't have an account? " : 'Already have an account? '}
+            <button
+              type="button"
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setErrors({});
+              }}
+              className="text-primary hover:underline font-medium"
+              disabled={isLoading}
+            >
+              {isLogin ? 'Sign up' : 'Sign in'}
+            </button>
+          </p>
+        </div>
       </Card>
     </div>
   );
