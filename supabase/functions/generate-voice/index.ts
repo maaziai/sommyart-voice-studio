@@ -113,34 +113,50 @@ serve(async (req) => {
 
     const { text, isMultiSpeaker, speakers, voice }: RequestBody = await req.json();
     
-    console.log("Generating Google Gemini TTS audio for text:", text?.substring(0, 50));
-    console.log("Multi-speaker mode:", isMultiSpeaker, "Speakers:", speakers?.length, "Voice:", voice);
+    console.log("Generating Google Gemini TTS audio");
+    console.log("Multi-speaker mode:", isMultiSpeaker, "Speakers:", speakers?.length);
 
     // Server-side input validation - reduced limit to prevent memory issues
-    if (!text || text.trim().length === 0) {
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
       throw new Error("Text is required and cannot be empty");
     }
 
-    if (text.length > 5000) {
+    // Sanitize text input - remove control characters and null bytes
+    const sanitizedText = text
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove control chars except tab, newline, carriage return
+      .trim();
+
+    if (sanitizedText.length === 0) {
+      throw new Error("Text is required and cannot be empty after sanitization");
+    }
+
+    if (sanitizedText.length > 5000) {
       throw new Error("Text exceeds maximum length of 5000 characters. Please use shorter text.");
     }
 
     // Validate voice parameter
     if (voice && !VALID_VOICES.includes(voice)) {
-      console.warn("Invalid voice parameter received:", voice);
       throw new Error("Invalid voice selection. Please choose a valid voice.");
     }
 
     // Validate speaker voices if multi-speaker mode
-    if (isMultiSpeaker && speakers && speakers.length > 0) {
+    if (isMultiSpeaker && speakers && Array.isArray(speakers) && speakers.length > 0) {
+      // Limit number of speakers
+      if (speakers.length > 10) {
+        throw new Error("Too many speakers. Maximum is 10.");
+      }
+      
       for (const speaker of speakers) {
         if (!speaker.voice || !VALID_VOICES.includes(speaker.voice)) {
-          console.warn("Invalid speaker voice:", speaker.voice);
           throw new Error("Invalid speaker voice selection. Please choose valid voices.");
         }
-        // Validate speaker name (basic sanitization)
-        if (!speaker.name || speaker.name.length > 50 || !/^[\w\s-]+$/i.test(speaker.name)) {
-          throw new Error("Invalid speaker name. Names should be alphanumeric and under 50 characters.");
+        // Enhanced speaker name validation - must start and end with alphanumeric
+        if (!speaker.name || 
+            typeof speaker.name !== 'string' ||
+            speaker.name.length < 1 || 
+            speaker.name.length > 50 || 
+            !/^[a-zA-Z0-9][a-zA-Z0-9\s-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/.test(speaker.name)) {
+          throw new Error("Invalid speaker name. Names must be 1-50 alphanumeric characters, optionally with spaces or hyphens.");
         }
       }
     }
@@ -181,7 +197,7 @@ serve(async (req) => {
       };
     }
 
-    // Call Google Generative AI API
+    // Call Google Generative AI API with sanitized text
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GOOGLE_API_KEY}`,
       {
@@ -192,7 +208,7 @@ serve(async (req) => {
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: text
+              text: sanitizedText
             }]
           }],
           generationConfig: {
