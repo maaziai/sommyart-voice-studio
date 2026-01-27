@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Mail, Lock, Mic, ArrowLeft, KeyRound } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
 import sommyartLogo from '@/assets/sommyart-logo.jpg';
+import AuthForm from '@/components/auth/AuthForm';
+import OtpVerification from '@/components/auth/OtpVerification';
+import ResetEmailSent from '@/components/auth/ResetEmailSent';
 
 // Validation schemas
 const emailSchema = z.string().email('Please enter a valid email address');
@@ -24,8 +26,11 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; confirmPassword?: string }>({});
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [showOtpVerification, setShowOtpVerification] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [pendingPassword, setPendingPassword] = useState('');
   
-  const { user, loading, signIn, signUp, resetPasswordForEmail, updatePassword, session } = useAuth();
+  const { user, loading, signIn, resetPasswordForEmail, updatePassword, session } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -94,6 +99,20 @@ const Auth = () => {
               description: 'Invalid email or password. Please try again.',
               variant: 'destructive',
             });
+          } else if (error.message.includes('Email not confirmed')) {
+            // User hasn't verified their email yet, show OTP verification
+            setPendingEmail(email);
+            setPendingPassword(password);
+            setShowOtpVerification(true);
+            // Resend OTP
+            await supabase.auth.resend({
+              type: 'signup',
+              email: email,
+            });
+            toast({
+              title: 'Email Not Verified',
+              description: 'Please verify your email. We sent a new code.',
+            });
           } else {
             toast({
               title: 'Login Failed',
@@ -109,7 +128,15 @@ const Auth = () => {
           navigate('/studio');
         }
       } else if (mode === 'signup') {
-        const { error } = await signUp(email, password);
+        // Sign up with email - will send OTP
+        const { error, data } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+          },
+        });
+
         if (error) {
           if (error.message.includes('User already registered')) {
             toast({
@@ -124,10 +151,20 @@ const Auth = () => {
               variant: 'destructive',
             });
           }
-        } else {
+        } else if (data.user && !data.session) {
+          // User created but needs email verification
+          setPendingEmail(email);
+          setPendingPassword(password);
+          setShowOtpVerification(true);
+          toast({
+            title: 'Verification Code Sent',
+            description: 'Please check your email for the 6-digit code.',
+          });
+        } else if (data.session) {
+          // Auto-confirmed (shouldn't happen with our settings, but handle it)
           toast({
             title: 'Account Created!',
-            description: 'Welcome to Sommyart Labs! You can now generate voices.',
+            description: 'Welcome to Sommyart Labs!',
           });
           navigate('/studio');
         }
@@ -143,7 +180,7 @@ const Auth = () => {
           setResetEmailSent(true);
           toast({
             title: 'Check Your Email',
-            description: 'We sent you a password reset link. Check your inbox.',
+            description: 'We sent you a password reset link.',
           });
         }
       } else if (mode === 'reset') {
@@ -167,10 +204,87 @@ const Auth = () => {
     }
   };
 
+  const handleOtpVerify = async (otp: string) => {
+    setIsLoading(true);
+    try {
+      const { error, data } = await supabase.auth.verifyOtp({
+        email: pendingEmail,
+        token: otp,
+        type: 'signup',
+      });
+
+      if (error) {
+        toast({
+          title: 'Verification Failed',
+          description: error.message,
+          variant: 'destructive',
+        });
+      } else if (data.session) {
+        toast({
+          title: 'Email Verified!',
+          description: 'Welcome to Sommyart Labs!',
+        });
+        navigate('/studio');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: pendingEmail,
+      });
+
+      if (error) {
+        toast({
+          title: 'Resend Failed',
+          description: error.message,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Code Sent',
+          description: 'A new verification code has been sent to your email.',
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'Resend Failed',
+        description: 'Unable to resend code. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleBackFromOtp = () => {
+    setShowOtpVerification(false);
+    setPendingEmail('');
+    setPendingPassword('');
+  };
+
   const switchMode = (newMode: AuthMode) => {
     setMode(newMode);
     setErrors({});
     setResetEmailSent(false);
+    setShowOtpVerification(false);
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (errors.email) setErrors(prev => ({ ...prev, email: undefined }));
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    if (errors.password) setErrors(prev => ({ ...prev, password: undefined }));
+  };
+
+  const handleConfirmPasswordChange = (value: string) => {
+    setConfirmPassword(value);
+    if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: undefined }));
   };
 
   if (loading) {
@@ -182,6 +296,7 @@ const Auth = () => {
   }
 
   const getTitle = () => {
+    if (showOtpVerification) return 'Verify Your Email';
     switch (mode) {
       case 'login': return 'Welcome Back';
       case 'signup': return 'Create Account';
@@ -191,10 +306,11 @@ const Auth = () => {
   };
 
   const getSubtitle = () => {
+    if (showOtpVerification) return 'Enter the code we sent to your email';
     switch (mode) {
       case 'login': return 'Sign in to access your voice studio';
       case 'signup': return 'Sign up to start generating AI voices';
-      case 'forgot': return 'Enter your email and we\'ll send you a reset link';
+      case 'forgot': return "Enter your email and we'll send you a reset link";
       case 'reset': return 'Choose a strong new password';
     }
   };
@@ -208,17 +324,6 @@ const Auth = () => {
       </div>
 
       <Card className="relative w-full max-w-md p-8 bg-card/95 backdrop-blur-sm border-border/50 shadow-xl">
-        {(mode === 'forgot' || mode === 'reset') && (
-          <button
-            type="button"
-            onClick={() => switchMode('login')}
-            className="absolute top-4 left-4 text-muted-foreground hover:text-foreground transition-colors"
-            disabled={isLoading}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-        )}
-
         <div className="text-center mb-8">
           <img 
             src={sommyartLogo} 
@@ -233,150 +338,33 @@ const Auth = () => {
           </p>
         </div>
 
-        {mode === 'forgot' && resetEmailSent ? (
-          <div className="text-center py-6">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-              <Mail className="w-8 h-8 text-primary" />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">Check Your Email</h3>
-            <p className="text-muted-foreground text-sm mb-6">
-              We sent a password reset link to <strong>{email}</strong>. 
-              Click the link in the email to reset your password.
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => switchMode('login')}
-              className="w-full"
-            >
-              Back to Sign In
-            </Button>
-          </div>
+        {showOtpVerification ? (
+          <OtpVerification
+            email={pendingEmail}
+            isLoading={isLoading}
+            onVerify={handleOtpVerify}
+            onResend={handleResendOtp}
+            onBack={handleBackFromOtp}
+          />
+        ) : mode === 'forgot' && resetEmailSent ? (
+          <ResetEmailSent
+            email={email}
+            onBackToLogin={() => switchMode('login')}
+          />
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {(mode === 'login' || mode === 'signup' || mode === 'forgot') && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-primary" />
-                  Email
-                </label>
-                <Input
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (errors.email) setErrors(prev => ({ ...prev, email: undefined }));
-                  }}
-                  className={`bg-background/50 ${errors.email ? 'border-destructive' : 'border-border/50'}`}
-                  disabled={isLoading}
-                />
-                {errors.email && (
-                  <p className="text-xs text-destructive">{errors.email}</p>
-                )}
-              </div>
-            )}
-
-            {(mode === 'login' || mode === 'signup' || mode === 'reset') && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-primary" />
-                  {mode === 'reset' ? 'New Password' : 'Password'}
-                </label>
-                <Input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (errors.password) setErrors(prev => ({ ...prev, password: undefined }));
-                  }}
-                  className={`bg-background/50 ${errors.password ? 'border-destructive' : 'border-border/50'}`}
-                  disabled={isLoading}
-                />
-                {errors.password && (
-                  <p className="text-xs text-destructive">{errors.password}</p>
-                )}
-              </div>
-            )}
-
-            {mode === 'reset' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <KeyRound className="w-4 h-4 text-primary" />
-                  Confirm Password
-                </label>
-                <Input
-                  type="password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => {
-                    setConfirmPassword(e.target.value);
-                    if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: undefined }));
-                  }}
-                  className={`bg-background/50 ${errors.confirmPassword ? 'border-destructive' : 'border-border/50'}`}
-                  disabled={isLoading}
-                />
-                {errors.confirmPassword && (
-                  <p className="text-xs text-destructive">{errors.confirmPassword}</p>
-                )}
-              </div>
-            )}
-
-            {mode === 'login' && (
-              <div className="text-right">
-                <button
-                  type="button"
-                  onClick={() => switchMode('forgot')}
-                  className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                  disabled={isLoading}
-                >
-                  Forgot password?
-                </button>
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              variant="studio"
-              size="lg"
-              className="w-full mt-6"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  {mode === 'login' && 'Signing in...'}
-                  {mode === 'signup' && 'Creating account...'}
-                  {mode === 'forgot' && 'Sending reset link...'}
-                  {mode === 'reset' && 'Updating password...'}
-                </>
-              ) : (
-                <>
-                  {mode === 'reset' ? <KeyRound className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                  {mode === 'login' && 'Sign In'}
-                  {mode === 'signup' && 'Create Account'}
-                  {mode === 'forgot' && 'Send Reset Link'}
-                  {mode === 'reset' && 'Update Password'}
-                </>
-              )}
-            </Button>
-          </form>
-        )}
-
-        {(mode === 'login' || mode === 'signup') && (
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-              <button
-                type="button"
-                onClick={() => switchMode(mode === 'login' ? 'signup' : 'login')}
-                className="text-primary hover:underline font-medium"
-                disabled={isLoading}
-              >
-                {mode === 'login' ? 'Sign up' : 'Sign in'}
-              </button>
-            </p>
-          </div>
+          <AuthForm
+            mode={mode}
+            email={email}
+            password={password}
+            confirmPassword={confirmPassword}
+            errors={errors}
+            isLoading={isLoading}
+            onEmailChange={handleEmailChange}
+            onPasswordChange={handlePasswordChange}
+            onConfirmPasswordChange={handleConfirmPasswordChange}
+            onSubmit={handleSubmit}
+            onSwitchMode={switchMode}
+          />
         )}
       </Card>
     </div>
