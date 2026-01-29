@@ -22,6 +22,7 @@ export const availableVoices = [
   { value: "Orus", label: "Maazi (Male Elderly)" },
   { value: "Leda", label: "Chisom (Female Soft)" },
   { value: "Aoede", label: "Amara (Female Warm)" },
+  { value: "Fenrir", label: "Chimkadibia (Male Young Nigerian)" },
 ];
 
 interface SpeakerConfigProps {
