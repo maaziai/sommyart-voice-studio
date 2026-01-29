@@ -229,13 +229,13 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header with logout */}
-      <div className="absolute top-4 right-4 z-10">
+      {/* Sign out - bottom left */}
+      <div className="fixed bottom-4 left-4 z-10">
         <Button
           variant="outline"
           size="sm"
           onClick={handleSignOut}
-          className="bg-background/50 backdrop-blur-sm"
+          className="bg-background/80 backdrop-blur-sm border-border/50 shadow-md"
         >
           <LogOut className="w-4 h-4 mr-2" />
           Sign Out
