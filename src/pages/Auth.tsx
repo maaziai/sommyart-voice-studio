@@ -10,6 +10,7 @@ import sommyartLogo from '@/assets/sommyart-logo.jpg';
 import AuthForm from '@/components/auth/AuthForm';
 import OtpVerification from '@/components/auth/OtpVerification';
 import ResetEmailSent from '@/components/auth/ResetEmailSent';
+import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 
 // Validation schemas
 const emailSchema = z.string().email('Please enter a valid email address');
@@ -352,19 +353,36 @@ const Auth = () => {
             onBackToLogin={() => switchMode('login')}
           />
         ) : (
-          <AuthForm
-            mode={mode}
-            email={email}
-            password={password}
-            confirmPassword={confirmPassword}
-            errors={errors}
-            isLoading={isLoading}
-            onEmailChange={handleEmailChange}
-            onPasswordChange={handlePasswordChange}
-            onConfirmPasswordChange={handleConfirmPasswordChange}
-            onSubmit={handleSubmit}
-            onSwitchMode={switchMode}
-          />
+          <>
+            <AuthForm
+              mode={mode}
+              email={email}
+              password={password}
+              confirmPassword={confirmPassword}
+              errors={errors}
+              isLoading={isLoading}
+              onEmailChange={handleEmailChange}
+              onPasswordChange={handlePasswordChange}
+              onConfirmPasswordChange={handleConfirmPasswordChange}
+              onSubmit={handleSubmit}
+              onSwitchMode={switchMode}
+            />
+            
+            {(mode === 'login' || mode === 'signup') && (
+              <>
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-border/50" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                  </div>
+                </div>
+                
+                <GoogleSignInButton />
+              </>
+            )}
+          </>
         )}
       </Card>
     </div>
