@@ -11,6 +11,7 @@ import AuthForm from '@/components/auth/AuthForm';
 import OtpVerification from '@/components/auth/OtpVerification';
 import ResetEmailSent from '@/components/auth/ResetEmailSent';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
+import AppleSignInButton from '@/components/auth/AppleSignInButton';
 
 // Validation schemas
 const emailSchema = z.string().email('Please enter a valid email address');
@@ -378,8 +379,10 @@ const Auth = () => {
                     <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
                   </div>
                 </div>
-                
-                <GoogleSignInButton />
+                <div className="space-y-3">
+                  <GoogleSignInButton />
+                  <AppleSignInButton />
+                </div>
               </>
             )}
           </>
