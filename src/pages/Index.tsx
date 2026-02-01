@@ -19,6 +19,7 @@ const voiceOptions = [
   { value: "Orus", label: "Maazi (Male Elderly)" },
   { value: "Leda", label: "Chisom (Female Soft)" },
   { value: "Aoede", label: "Amara (Female Warm)" },
+  { value: "Puck", label: "Mmesoma (Female Storyteller)" },
 ];
 
 const defaultSpeakers: Speaker[] = [
