@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Mic, Download, Volume2, Split, LogOut } from "lucide-react";
+import { Loader2, Mic, Download, Volume2, Split, LogOut, Play, Pause } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
 import sommyartLogo from "@/assets/sommyart-logo.jpg";
@@ -75,6 +75,7 @@ const Index = () => {
   const [selectedVoice, setSelectedVoice] = useState("Kore");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("single");
   const [speakers, setSpeakers] = useState<Speaker[]>(defaultSpeakers);
   const [splitVoices, setSplitVoices] = useState(defaultSplitVoices);
@@ -96,10 +97,12 @@ const Index = () => {
 
   // Auto-play when new audio is generated
   useEffect(() => {
-    if (generatedAudio) {
-      const audio = new Audio(generatedAudio);
-      audio.play().catch((error) => {
+    if (generatedAudio && audioRef.current) {
+      audioRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch((error) => {
         console.log("Auto-play prevented:", error);
+        setIsPlaying(false);
         toast({
           title: "Audio Ready",
           description: "Click play to listen to your generated voice.",
@@ -107,6 +110,26 @@ const Index = () => {
       });
     }
   }, [generatedAudio, toast]);
+
+  // Reset playing state when audio ends
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const handleEnded = () => setIsPlaying(false);
+    audio.addEventListener('ended', handleEnded);
+    return () => audio.removeEventListener('ended', handleEnded);
+  }, [generatedAudio]);
+
+  const togglePlayPause = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  };
 
   const handleGenerate = async () => {
     if (!text.trim()) {
@@ -129,6 +152,7 @@ const Index = () => {
 
     setIsGenerating(true);
     setGeneratedAudio(null);
+    setIsPlaying(false);
 
     try {
       console.log("Generating TTS with Google Gemini, mode:", voiceMode);
@@ -472,16 +496,26 @@ const Index = () => {
                   {generatedAudio && !isGenerating && (
                     <div className="w-full space-y-4">
                       <div className="flex items-center justify-center">
-                        <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center animate-pulse">
-                          <Volume2 className="w-8 h-8 text-primary icon-3d" />
-                        </div>
+                        <button
+                          onClick={togglePlayPause}
+                          className="w-16 h-16 rounded-full bg-primary/20 hover:bg-primary/30 flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          {isPlaying ? (
+                            <Pause className="w-8 h-8 text-primary icon-3d" />
+                          ) : (
+                            <Play className="w-8 h-8 text-primary icon-3d ml-1" />
+                          )}
+                        </button>
                       </div>
                       
                       <div className="w-full">
                         <audio 
+                          ref={audioRef}
                           controls 
                           className="w-full"
                           src={generatedAudio}
+                          onPlay={() => setIsPlaying(true)}
+                          onPause={() => setIsPlaying(false)}
                         >
                           Your browser does not support the audio element.
                         </audio>
