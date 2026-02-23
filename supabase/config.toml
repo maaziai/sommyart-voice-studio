@@ -2,3 +2,9 @@ project_id = "qmceamjrodutpdpeigya"
 
 [functions.generate-voice]
 verify_jwt = true
+
+[functions.clone-voice]
+verify_jwt = true
+
+[functions.elevenlabs-tts]
+verify_jwt = true

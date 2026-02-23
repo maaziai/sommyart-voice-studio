@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
 import sommyartLogo from "@/assets/sommyart-logo.jpg";
 import { SpeakerConfig, Speaker } from "@/components/SpeakerConfig";
+import { VoiceCloning } from "@/components/VoiceCloning";
 
 const voiceOptions = [
   { value: "Kore", label: "Male Voice (Kore)" },
@@ -68,6 +69,13 @@ const hasSplitVoiceTags = (script: string): boolean => {
   return voiceTagPattern.test(script);
 };
 
+interface ClonedVoice {
+  id: string;
+  name: string;
+  elevenlabs_voice_id: string;
+  created_at: string;
+}
+
 type VoiceMode = "single" | "multi" | "split";
 
 const Index = () => {
@@ -80,6 +88,7 @@ const Index = () => {
   const [speakers, setSpeakers] = useState<Speaker[]>(defaultSpeakers);
   const [splitVoices, setSplitVoices] = useState(defaultSplitVoices);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [clonedVoices, setClonedVoices] = useState<ClonedVoice[]>([]);
   const { toast } = useToast();
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
@@ -185,7 +194,25 @@ const Index = () => {
         useSpeakers = speakers.map(s => ({ name: s.name, voice: s.voice }));
         useMultiSpeaker = true;
       } else {
-        // Single speaker mode
+        // Single speaker mode - check if it's a cloned voice
+        const clonedVoice = clonedVoices.find(v => v.elevenlabs_voice_id === selectedVoice);
+        
+        if (clonedVoice) {
+          // Use ElevenLabs TTS for cloned voices
+          console.log("Using ElevenLabs TTS for cloned voice:", clonedVoice.name);
+          const { data: elData, error: elError } = await supabase.functions.invoke('elevenlabs-tts', {
+            body: { text: processedText, voiceId: clonedVoice.elevenlabs_voice_id }
+          });
+          if (elError) throw elError;
+          if (elData.success && elData.audioUrl) {
+            setGeneratedAudio(elData.audioUrl);
+            toast({ title: "Voice Generated!", description: "Your voiceover is ready." });
+          } else {
+            throw new Error(elData.error || "Failed to generate voice");
+          }
+          return;
+        }
+        
         useVoice = selectedVoice;
       }
       
@@ -438,6 +465,18 @@ const Index = () => {
                           {option.label}
                         </SelectItem>
                       ))}
+                      {clonedVoices.length > 0 && (
+                        <>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-border mt-1 pt-2">
+                            🎤 Your Cloned Voices
+                          </div>
+                          {clonedVoices.map((cv) => (
+                            <SelectItem key={cv.elevenlabs_voice_id} value={cv.elevenlabs_voice_id} className="cursor-pointer">
+                              {cv.name} (Cloned)
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -537,13 +576,15 @@ const Index = () => {
                 </Button>
               )}
 
+              <VoiceCloning onVoicesChange={setClonedVoices} />
+
               <Card className="p-4 bg-accent/5 border-accent/20">
                 <h3 className="text-sm font-semibold mb-2 text-foreground">💡 Pro Tips</h3>
                 <ul className="text-xs text-muted-foreground space-y-1">
                   <li>• Keep sentences clear and well-punctuated</li>
                   <li>• Use natural language for best results</li>
                   <li>• Try different voices to find your perfect match</li>
-                  <li>• Preview before downloading for best results</li>
+                  <li>• Clone your own voice for personalized audio</li>
                 </ul>
               </Card>
             </div>
