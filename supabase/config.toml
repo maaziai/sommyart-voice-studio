@@ -1,7 +1,7 @@
 project_id = "qmceamjrodutpdpeigya"
 
 [functions.generate-voice]
-verify_jwt = true
+verify_jwt = false
 
 [functions.clone-voice]
 verify_jwt = true
