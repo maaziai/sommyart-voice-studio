@@ -171,6 +171,19 @@ export function VoiceCloning({ onVoicesChange }: VoiceCloningProps) {
     ? uploadedFile.name
     : null;
 
+  const previewUrl = recordedBlob
+    ? URL.createObjectURL(recordedBlob)
+    : uploadedFile
+    ? URL.createObjectURL(uploadedFile)
+    : null;
+
+  // Cleanup object URLs
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   return (
     <Card className="p-6 bg-gradient-to-br from-card to-card/80 border-border/50 space-y-5">
       <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -211,7 +224,16 @@ export function VoiceCloning({ onVoicesChange }: VoiceCloningProps) {
       </div>
 
       {audioLabel && (
-        <p className="text-xs text-muted-foreground truncate">✅ {audioLabel}</p>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground truncate">✅ {audioLabel}</p>
+          {previewUrl && (
+            <audio
+              controls
+              src={previewUrl}
+              className="w-full h-8 [&::-webkit-media-controls-panel]:bg-muted/50 rounded"
+            />
+          )}
+        </div>
       )}
 
       <Button
