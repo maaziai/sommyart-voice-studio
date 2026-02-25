@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -11,6 +12,32 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate user
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized", success: false }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: "Unauthorized", success: false }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userId = claimsData.claims.sub;
+
     const { text, voiceId } = await req.json();
     
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
@@ -19,7 +46,22 @@ serve(async (req) => {
     if (text.length > 5000) {
       throw new Error("Text exceeds 5000 characters.");
     }
-    if (!voiceId) throw new Error("Voice ID is required.");
+    if (!voiceId || typeof voiceId !== 'string') throw new Error("Voice ID is required.");
+
+    // Validate voice ownership
+    const { data: voiceData, error: voiceError } = await supabase
+      .from("cloned_voices")
+      .select("elevenlabs_voice_id")
+      .eq("elevenlabs_voice_id", voiceId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (voiceError || !voiceData) {
+      return new Response(
+        JSON.stringify({ error: "Voice not found or access denied.", success: false }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
     if (!ELEVENLABS_API_KEY) throw new Error("Service not configured.");
