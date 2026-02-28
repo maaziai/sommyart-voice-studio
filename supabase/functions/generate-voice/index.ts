@@ -157,8 +157,8 @@ serve(async (req) => {
       throw new Error("Text is required and cannot be empty after sanitization");
     }
 
-    if (sanitizedText.length > 5000) {
-      throw new Error("Text exceeds maximum length of 5000 characters. Please use shorter text.");
+    if (sanitizedText.length > 10000) {
+      throw new Error("Text exceeds maximum length of 10,000 characters. Please use shorter text.");
     }
 
     // Validate voice parameter

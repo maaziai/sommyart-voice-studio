@@ -285,7 +285,7 @@ const Landing = () => {
               </span>
               <span className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-green-500" />
-                5000 characters
+                10,000 characters
               </span>
             </div>
           </div>

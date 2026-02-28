@@ -43,8 +43,8 @@ serve(async (req) => {
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
       throw new Error("Text is required.");
     }
-    if (text.length > 5000) {
-      throw new Error("Text exceeds 5000 characters.");
+    if (text.length > 10000) {
+      throw new Error("Text exceeds 10,000 characters.");
     }
     if (!voiceId || typeof voiceId !== 'string') throw new Error("Voice ID is required.");
 
