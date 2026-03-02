@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Mic, Download, Volume2, Split, LogOut, Play, Pause } from "lucide-react";
+import { Loader2, Mic, Download, Volume2, Split, LogOut, Play, Pause, Library } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
 import sommyartLogo from "@/assets/sommyart-logo.jpg";
@@ -206,6 +206,16 @@ const Index = () => {
           if (elError) throw elError;
           if (elData.success && elData.audioUrl) {
             setGeneratedAudio(elData.audioUrl);
+            // Save cloned voice generation to session library
+            if (user) {
+              await supabase.from("generations").insert({
+                user_id: user.id,
+                text_input: text.substring(0, 500),
+                voice_id: clonedVoice.name,
+                voice_mode: "cloned",
+                audio_url: elData.audioUrl,
+              });
+            }
             toast({ title: "Voice Generated!", description: "Your voiceover is ready." });
           } else {
             throw new Error(elData.error || "Failed to generate voice");
@@ -229,6 +239,17 @@ const Index = () => {
 
       if (data.success && data.audioUrl) {
         setGeneratedAudio(data.audioUrl);
+        
+        // Save generation to session library
+        if (user) {
+          await supabase.from("generations").insert({
+            user_id: user.id,
+            text_input: text.substring(0, 500),
+            voice_id: voiceMode === "single" ? selectedVoice : (speakers.map(s => s.voice).join(",")),
+            voice_mode: voiceMode,
+            audio_url: data.audioUrl,
+          });
+        }
         
         toast({
           title: "Voice Generated!",
@@ -281,8 +302,17 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Sign out - bottom left */}
-      <div className="fixed bottom-4 left-4 z-10">
+      {/* Bottom bar */}
+      <div className="fixed bottom-4 left-4 z-10 flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate('/library')}
+          className="bg-background/80 backdrop-blur-sm border-border/50 shadow-md"
+        >
+          <Library className="w-4 h-4 mr-2" />
+          My Sessions
+        </Button>
         <Button
           variant="outline"
           size="sm"
