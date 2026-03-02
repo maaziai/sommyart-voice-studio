@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Loader2, Mail, Lock, Mic, KeyRound, ArrowLeft } from 'lucide-react';
 
 type AuthMode = 'login' | 'signup' | 'forgot' | 'reset';
@@ -7,13 +8,13 @@ type AuthMode = 'login' | 'signup' | 'forgot' | 'reset';
 interface AuthFormProps {
   mode: AuthMode;
   email: string;
-  password: string;
-  confirmPassword: string;
-  errors: { email?: string; password?: string; confirmPassword?: string };
+  pin: string;
+  confirmPin: string;
+  errors: { email?: string; pin?: string; confirmPin?: string };
   isLoading: boolean;
   onEmailChange: (value: string) => void;
-  onPasswordChange: (value: string) => void;
-  onConfirmPasswordChange: (value: string) => void;
+  onPinChange: (value: string) => void;
+  onConfirmPinChange: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   onSwitchMode: (mode: AuthMode) => void;
 }
@@ -21,13 +22,13 @@ interface AuthFormProps {
 const AuthForm = ({
   mode,
   email,
-  password,
-  confirmPassword,
+  pin,
+  confirmPin,
   errors,
   isLoading,
   onEmailChange,
-  onPasswordChange,
-  onConfirmPasswordChange,
+  onPinChange,
+  onConfirmPinChange,
   onSubmit,
   onSwitchMode,
 }: AuthFormProps) => {
@@ -68,18 +69,27 @@ const AuthForm = ({
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground flex items-center gap-2">
             <Lock className="w-4 h-4 text-primary" />
-            {mode === 'reset' ? 'New Password' : 'Password'}
+            {mode === 'reset' ? 'New PIN' : 'PIN'}
           </label>
-          <Input
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => onPasswordChange(e.target.value)}
-            className={`bg-background/50 ${errors.password ? 'border-destructive' : 'border-border/50'}`}
-            disabled={isLoading}
-          />
-          {errors.password && (
-            <p className="text-xs text-destructive">{errors.password}</p>
+          <div className="flex justify-center">
+            <InputOTP
+              maxLength={4}
+              value={pin}
+              onChange={onPinChange}
+              disabled={isLoading}
+              inputMode="numeric"
+              pattern="[0-9]*"
+            >
+              <InputOTPGroup>
+                <InputOTPSlot index={0} />
+                <InputOTPSlot index={1} />
+                <InputOTPSlot index={2} />
+                <InputOTPSlot index={3} />
+              </InputOTPGroup>
+            </InputOTP>
+          </div>
+          {errors.pin && (
+            <p className="text-xs text-destructive text-center">{errors.pin}</p>
           )}
         </div>
       )}
@@ -88,18 +98,27 @@ const AuthForm = ({
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground flex items-center gap-2">
             <KeyRound className="w-4 h-4 text-primary" />
-            Confirm Password
+            Confirm PIN
           </label>
-          <Input
-            type="password"
-            placeholder="••••••••"
-            value={confirmPassword}
-            onChange={(e) => onConfirmPasswordChange(e.target.value)}
-            className={`bg-background/50 ${errors.confirmPassword ? 'border-destructive' : 'border-border/50'}`}
-            disabled={isLoading}
-          />
-          {errors.confirmPassword && (
-            <p className="text-xs text-destructive">{errors.confirmPassword}</p>
+          <div className="flex justify-center">
+            <InputOTP
+              maxLength={4}
+              value={confirmPin}
+              onChange={onConfirmPinChange}
+              disabled={isLoading}
+              inputMode="numeric"
+              pattern="[0-9]*"
+            >
+              <InputOTPGroup>
+                <InputOTPSlot index={0} />
+                <InputOTPSlot index={1} />
+                <InputOTPSlot index={2} />
+                <InputOTPSlot index={3} />
+              </InputOTPGroup>
+            </InputOTP>
+          </div>
+          {errors.confirmPin && (
+            <p className="text-xs text-destructive text-center">{errors.confirmPin}</p>
           )}
         </div>
       )}
@@ -112,7 +131,7 @@ const AuthForm = ({
             className="text-xs text-muted-foreground hover:text-primary transition-colors"
             disabled={isLoading}
           >
-            Forgot password?
+            Forgot PIN?
           </button>
         </div>
       )}
@@ -130,7 +149,7 @@ const AuthForm = ({
             {mode === 'login' && 'Signing in...'}
             {mode === 'signup' && 'Creating account...'}
             {mode === 'forgot' && 'Sending reset link...'}
-            {mode === 'reset' && 'Updating password...'}
+            {mode === 'reset' && 'Updating PIN...'}
           </>
         ) : (
           <>
@@ -138,7 +157,7 @@ const AuthForm = ({
             {mode === 'login' && 'Sign In'}
             {mode === 'signup' && 'Create Account'}
             {mode === 'forgot' && 'Send Reset Link'}
-            {mode === 'reset' && 'Update Password'}
+            {mode === 'reset' && 'Update PIN'}
           </>
         )}
       </Button>

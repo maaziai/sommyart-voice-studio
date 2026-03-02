@@ -15,7 +15,10 @@ import AppleSignInButton from '@/components/auth/AppleSignInButton';
 
 // Validation schemas
 const emailSchema = z.string().email('Please enter a valid email address');
-const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
+const pinSchema = z.string().length(4, 'PIN must be exactly 4 digits').regex(/^\d{4}$/, 'PIN must contain only digits');
+
+// Pad PIN to meet minimum password length requirement
+const padPin = (pin: string) => `SA${pin}`;
 
 type AuthMode = 'login' | 'signup' | 'forgot' | 'reset';
 
@@ -23,14 +26,13 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pin, setPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; confirmPassword?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; pin?: string; confirmPin?: string }>({});
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [showOtpVerification, setShowOtpVerification] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
-  const [pendingPassword, setPendingPassword] = useState('');
   
   const { user, loading, signIn, resetPasswordForEmail, updatePassword, session } = useAuth();
   const navigate = useNavigate();
@@ -52,7 +54,7 @@ const Auth = () => {
   }, [user, loading, navigate, mode]);
 
   const validateForm = (): boolean => {
-    const newErrors: { email?: string; password?: string; confirmPassword?: string } = {};
+    const newErrors: { email?: string; pin?: string; confirmPin?: string } = {};
     
     if (mode === 'login' || mode === 'signup' || mode === 'forgot') {
       const emailResult = emailSchema.safeParse(email);
@@ -62,19 +64,19 @@ const Auth = () => {
     }
     
     if (mode === 'login' || mode === 'signup') {
-      const passwordResult = passwordSchema.safeParse(password);
-      if (!passwordResult.success) {
-        newErrors.password = passwordResult.error.errors[0].message;
+      const pinResult = pinSchema.safeParse(pin);
+      if (!pinResult.success) {
+        newErrors.pin = pinResult.error.errors[0].message;
       }
     }
 
     if (mode === 'reset') {
-      const passwordResult = passwordSchema.safeParse(password);
-      if (!passwordResult.success) {
-        newErrors.password = passwordResult.error.errors[0].message;
+      const pinResult = pinSchema.safeParse(pin);
+      if (!pinResult.success) {
+        newErrors.pin = pinResult.error.errors[0].message;
       }
-      if (password !== confirmPassword) {
-        newErrors.confirmPassword = 'Passwords do not match';
+      if (pin !== confirmPin) {
+        newErrors.confirmPin = 'PINs do not match';
       }
     }
     
@@ -93,20 +95,17 @@ const Auth = () => {
     
     try {
       if (mode === 'login') {
-        const { error } = await signIn(email, password);
+        const { error } = await signIn(email, padPin(pin));
         if (error) {
           if (error.message.includes('Invalid login credentials')) {
             toast({
               title: 'Login Failed',
-              description: 'Invalid email or password. Please try again.',
+              description: 'Invalid email or PIN. Please try again.',
               variant: 'destructive',
             });
           } else if (error.message.includes('Email not confirmed')) {
-            // User hasn't verified their email yet, show OTP verification
             setPendingEmail(email);
-            setPendingPassword(password);
             setShowOtpVerification(true);
-            // Resend OTP
             await supabase.auth.resend({
               type: 'signup',
               email: email,
@@ -130,10 +129,9 @@ const Auth = () => {
           navigate('/studio');
         }
       } else if (mode === 'signup') {
-        // Sign up with email - will send OTP
         const { error, data } = await supabase.auth.signUp({
           email,
-          password,
+          password: padPin(pin),
           options: {
             emailRedirectTo: `${window.location.origin}/`,
           },
@@ -154,16 +152,13 @@ const Auth = () => {
             });
           }
         } else if (data.user && !data.session) {
-          // User created but needs email verification
           setPendingEmail(email);
-          setPendingPassword(password);
           setShowOtpVerification(true);
           toast({
             title: 'Verification Code Sent',
             description: 'Please check your email for the 6-digit code.',
           });
         } else if (data.session) {
-          // Auto-confirmed (shouldn't happen with our settings, but handle it)
           toast({
             title: 'Account Created!',
             description: 'Welcome to Sommyart Labs!',
@@ -182,21 +177,21 @@ const Auth = () => {
           setResetEmailSent(true);
           toast({
             title: 'Check Your Email',
-            description: 'We sent you a password reset link.',
+            description: 'We sent you a PIN reset link.',
           });
         }
       } else if (mode === 'reset') {
-        const { error } = await updatePassword(password);
+        const { error } = await updatePassword(padPin(pin));
         if (error) {
           toast({
-            title: 'Password Update Failed',
+            title: 'PIN Update Failed',
             description: error.message,
             variant: 'destructive',
           });
         } else {
           toast({
-            title: 'Password Updated!',
-            description: 'Your password has been successfully changed.',
+            title: 'PIN Updated!',
+            description: 'Your PIN has been successfully changed.',
           });
           navigate('/studio');
         }
@@ -264,12 +259,13 @@ const Auth = () => {
   const handleBackFromOtp = () => {
     setShowOtpVerification(false);
     setPendingEmail('');
-    setPendingPassword('');
   };
 
   const switchMode = (newMode: AuthMode) => {
     setMode(newMode);
     setErrors({});
+    setPin('');
+    setConfirmPin('');
     setResetEmailSent(false);
     setShowOtpVerification(false);
   };
@@ -279,14 +275,14 @@ const Auth = () => {
     if (errors.email) setErrors(prev => ({ ...prev, email: undefined }));
   };
 
-  const handlePasswordChange = (value: string) => {
-    setPassword(value);
-    if (errors.password) setErrors(prev => ({ ...prev, password: undefined }));
+  const handlePinChange = (value: string) => {
+    setPin(value);
+    if (errors.pin) setErrors(prev => ({ ...prev, pin: undefined }));
   };
 
-  const handleConfirmPasswordChange = (value: string) => {
-    setConfirmPassword(value);
-    if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: undefined }));
+  const handleConfirmPinChange = (value: string) => {
+    setConfirmPin(value);
+    if (errors.confirmPin) setErrors(prev => ({ ...prev, confirmPin: undefined }));
   };
 
   if (loading) {
@@ -302,18 +298,18 @@ const Auth = () => {
     switch (mode) {
       case 'login': return 'Welcome Back';
       case 'signup': return 'Create Account';
-      case 'forgot': return 'Reset Password';
-      case 'reset': return 'Set New Password';
+      case 'forgot': return 'Reset PIN';
+      case 'reset': return 'Set New PIN';
     }
   };
 
   const getSubtitle = () => {
     if (showOtpVerification) return 'Enter the code we sent to your email';
     switch (mode) {
-      case 'login': return 'Sign in to access your voice studio';
-      case 'signup': return 'Sign up to start generating AI voices';
+      case 'login': return 'Sign in with your email and 4-digit PIN';
+      case 'signup': return 'Sign up with a 4-digit PIN to get started';
       case 'forgot': return "Enter your email and we'll send you a reset link";
-      case 'reset': return 'Choose a strong new password';
+      case 'reset': return 'Choose a new 4-digit PIN';
     }
   };
 
@@ -358,13 +354,13 @@ const Auth = () => {
             <AuthForm
               mode={mode}
               email={email}
-              password={password}
-              confirmPassword={confirmPassword}
+              pin={pin}
+              confirmPin={confirmPin}
               errors={errors}
               isLoading={isLoading}
               onEmailChange={handleEmailChange}
-              onPasswordChange={handlePasswordChange}
-              onConfirmPasswordChange={handleConfirmPasswordChange}
+              onPinChange={handlePinChange}
+              onConfirmPinChange={handleConfirmPinChange}
               onSubmit={handleSubmit}
               onSwitchMode={switchMode}
             />
