@@ -14,24 +14,25 @@ import { SpeakerConfig, Speaker } from "@/components/SpeakerConfig";
 import { VoiceCloning } from "@/components/VoiceCloning";
 
 const voiceOptions = [
-  { value: "Kore", label: "Male Voice (Kore)" },
-  { value: "Puck", label: "Female Voice (Puck)" },
-  { value: "Charon", label: "Josmart (Male Deep)" },
-  { value: "Orus", label: "Maazi (Male Elderly)" },
-  { value: "Leda", label: "Chisom (Female Soft)" },
-  { value: "Aoede", label: "Amara (Female Warm)" },
-  { value: "Puck", label: "Mmesoma (Female Storyteller)" },
+  { value: "Brian", label: "Male Voice (Brian)" },
+  { value: "Sarah", label: "Female Voice (Sarah)" },
+  { value: "George", label: "Josmart (Male Deep)" },
+  { value: "Bill", label: "Maazi (Male Elderly)" },
+  { value: "Lily", label: "Chisom (Female Soft)" },
+  { value: "Alice", label: "Amara (Female Warm)" },
+  { value: "Liam", label: "Chimkadibia (Male Young)" },
+  { value: "River", label: "Mmesoma (Neutral Storyteller)" },
 ];
 
 const defaultSpeakers: Speaker[] = [
-  { id: crypto.randomUUID(), name: "Speaker1", voice: "Kore" },
-  { id: crypto.randomUUID(), name: "Speaker2", voice: "Puck" },
+  { id: crypto.randomUUID(), name: "Speaker1", voice: "Brian" },
+  { id: crypto.randomUUID(), name: "Speaker2", voice: "Sarah" },
 ];
 
 // Default split voice mapping
 const defaultSplitVoices = {
-  male: "Kore",
-  female: "Puck",
+  male: "Brian",
+  female: "Sarah",
 };
 
 // Action tags that should pass through to TTS (not treated as voice switches)
@@ -80,7 +81,7 @@ type VoiceMode = "single" | "multi" | "split";
 
 const Index = () => {
   const [text, setText] = useState("");
-  const [selectedVoice, setSelectedVoice] = useState("Kore");
+  const [selectedVoice, setSelectedVoice] = useState("Brian");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -164,7 +165,7 @@ const Index = () => {
     setIsPlaying(false);
 
     try {
-      console.log("Generating TTS with Google Gemini, mode:", voiceMode);
+      console.log("Generating TTS with ElevenLabs, mode:", voiceMode);
       
       let processedText = text;
       let useSpeakers: { name: string; voice: string }[] | undefined;
@@ -275,7 +276,7 @@ const Index = () => {
     
     const link = document.createElement('a');
     link.href = generatedAudio;
-    link.download = `sommyart-gemini-voice-${Date.now()}.wav`;
+    link.download = `sommyart-voice-${Date.now()}.mp3`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -376,7 +377,7 @@ const Index = () => {
 
               <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                 <p className="text-sm text-muted-foreground">
-                  🎙️ Powered by <span className="font-semibold text-primary">Google Gemini 2.5 Flash TTS</span> - Natural-sounding voice synthesis
+                  🎙️ Powered by <span className="font-semibold text-primary">ElevenLabs Multilingual V2</span> - Studio-quality voice synthesis
                 </p>
               </div>
 
@@ -631,7 +632,7 @@ const Index = () => {
             </div>
             <h3 className="font-semibold">AI Voice Generation</h3>
             <p className="text-sm text-muted-foreground">
-              Powered by Google Gemini 2.5 Flash for natural-sounding voice synthesis
+              Powered by ElevenLabs Multilingual V2 for studio-quality voice synthesis
             </p>
           </Card>
 
