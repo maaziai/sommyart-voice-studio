@@ -91,7 +91,7 @@ const Index = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [clonedVoices, setClonedVoices] = useState<ClonedVoice[]>([]);
   const { toast } = useToast();
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   // Redirect to auth if not logged in
