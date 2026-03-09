@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.elevenlabs-tts]
 verify_jwt = false
+
+[functions.auth-pin]
+verify_jwt = false
