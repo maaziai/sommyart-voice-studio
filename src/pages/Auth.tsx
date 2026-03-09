@@ -17,9 +17,6 @@ import AppleSignInButton from '@/components/auth/AppleSignInButton';
 const emailSchema = z.string().email('Please enter a valid email address');
 const pinSchema = z.string().length(4, 'PIN must be exactly 4 digits').regex(/^\d{4}$/, 'PIN must contain only digits');
 
-// Pad PIN to meet minimum password length requirement
-const padPin = (pin: string) => `SA${pin}`;
-
 type AuthMode = 'login' | 'signup' | 'forgot' | 'reset';
 
 const Auth = () => {
@@ -95,74 +92,51 @@ const Auth = () => {
     
     try {
       if (mode === 'login') {
-        const { error } = await signIn(email, padPin(pin));
-        if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            toast({
-              title: 'Login Failed',
-              description: 'Invalid email or PIN. Please try again.',
-              variant: 'destructive',
-            });
-          } else if (error.message.includes('Email not confirmed')) {
+        const { data, error: fnError } = await supabase.functions.invoke('auth-pin', {
+          body: { action: 'signin', email, pin },
+        });
+        if (fnError || !data?.success) {
+          const errMsg = data?.error || fnError?.message || 'Login failed';
+          if (errMsg.includes('Invalid login credentials')) {
+            toast({ title: 'Login Failed', description: 'Invalid email or PIN. Please try again.', variant: 'destructive' });
+          } else if (errMsg.includes('Email not confirmed')) {
             setPendingEmail(email);
             setShowOtpVerification(true);
-            await supabase.auth.resend({
-              type: 'signup',
-              email: email,
-            });
-            toast({
-              title: 'Email Not Verified',
-              description: 'Please verify your email. We sent a new code.',
-            });
+            await supabase.auth.resend({ type: 'signup', email });
+            toast({ title: 'Email Not Verified', description: 'Please verify your email. We sent a new code.' });
           } else {
-            toast({
-              title: 'Login Failed',
-              description: error.message,
-              variant: 'destructive',
-            });
+            toast({ title: 'Login Failed', description: errMsg, variant: 'destructive' });
           }
-        } else {
-          toast({
-            title: 'Welcome Back!',
-            description: 'You have successfully logged in.',
+        } else if (data?.session) {
+          // Set the session from the edge function response
+          await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
           });
+          toast({ title: 'Welcome Back!', description: 'You have successfully logged in.' });
           navigate('/studio');
         }
       } else if (mode === 'signup') {
-        const { error, data } = await supabase.auth.signUp({
-          email,
-          password: padPin(pin),
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-          },
+        const { data, error: fnError } = await supabase.functions.invoke('auth-pin', {
+          body: { action: 'signup', email, pin },
         });
-
-        if (error) {
-          if (error.message.includes('User already registered')) {
-            toast({
-              title: 'Account Exists',
-              description: 'An account with this email already exists. Please log in instead.',
-              variant: 'destructive',
-            });
+        if (fnError || !data?.success) {
+          const errMsg = data?.error || fnError?.message || 'Sign up failed';
+          if (errMsg.includes('User already registered')) {
+            toast({ title: 'Account Exists', description: 'An account with this email already exists. Please log in instead.', variant: 'destructive' });
           } else {
-            toast({
-              title: 'Sign Up Failed',
-              description: error.message,
-              variant: 'destructive',
-            });
+            toast({ title: 'Sign Up Failed', description: errMsg, variant: 'destructive' });
           }
-        } else if (data.user && !data.session) {
+        } else if (data?.needsVerification) {
           setPendingEmail(email);
           setShowOtpVerification(true);
-          toast({
-            title: 'Verification Code Sent',
-            description: 'Please check your email for the 6-digit code.',
+          toast({ title: 'Verification Code Sent', description: 'Please check your email for the 6-digit code.' });
+        } else if (data?.session) {
+          await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
           });
-        } else if (data.session) {
-          toast({
-            title: 'Account Created!',
-            description: 'Welcome to Sommyart Labs!',
-          });
+          toast({ title: 'Account Created!', description: 'Welcome to Sommyart Labs!' });
           navigate('/studio');
         }
       } else if (mode === 'forgot') {
@@ -181,18 +155,13 @@ const Auth = () => {
           });
         }
       } else if (mode === 'reset') {
-        const { error } = await updatePassword(padPin(pin));
-        if (error) {
-          toast({
-            title: 'PIN Update Failed',
-            description: error.message,
-            variant: 'destructive',
-          });
+        const { data, error: fnError } = await supabase.functions.invoke('auth-pin', {
+          body: { action: 'update_password', pin },
+        });
+        if (fnError || !data?.success) {
+          toast({ title: 'PIN Update Failed', description: data?.error || fnError?.message || 'Failed to update PIN.', variant: 'destructive' });
         } else {
-          toast({
-            title: 'PIN Updated!',
-            description: 'Your PIN has been successfully changed.',
-          });
+          toast({ title: 'PIN Updated!', description: 'Your PIN has been successfully changed.' });
           navigate('/studio');
         }
       }

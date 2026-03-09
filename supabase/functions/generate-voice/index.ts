@@ -20,22 +20,8 @@ const VOICE_MAP: Record<string, string> = {
 
 const VALID_VOICES = Object.keys(VOICE_MAP);
 
-// Simple in-memory rate limiting
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT_WINDOW_MS = 60000;
 const RATE_LIMIT_MAX_REQUESTS = 10;
-
-function checkRateLimit(clientIp: string): boolean {
-  const now = Date.now();
-  const clientData = rateLimitMap.get(clientIp);
-  if (!clientData || now > clientData.resetTime) {
-    rateLimitMap.set(clientIp, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
-    return true;
-  }
-  if (clientData.count >= RATE_LIMIT_MAX_REQUESTS) return false;
-  clientData.count++;
-  return true;
-}
+const RATE_LIMIT_WINDOW_SECONDS = 60;
 
 interface Speaker {
   name: string;
@@ -167,10 +153,22 @@ serve(async (req) => {
 
     const userId = claimsData.claims.sub;
 
-    // Rate limiting
+    // Rate limiting using database for persistence across instances
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
                      req.headers.get("x-real-ip") || userId || "unknown";
-    if (!checkRateLimit(clientIp)) {
+    
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    
+    const { data: allowed, error: rlError } = await serviceClient.rpc('check_rate_limit', {
+      p_identifier: clientIp,
+      p_max_requests: RATE_LIMIT_MAX_REQUESTS,
+      p_window_seconds: RATE_LIMIT_WINDOW_SECONDS,
+    });
+    
+    if (rlError || !allowed) {
       return new Response(
         JSON.stringify({ error: "Too many requests. Please wait a moment.", success: false }),
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
