@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Mic, Download, Volume2, Split, LogOut, Play, Pause, Library } from "lucide-react";
+import { Loader2, Mic, Download, Volume2, Split, LogOut, Play, Pause, Library, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
 import sommyartLogo from "@/assets/sommyart-logo.jpg";
