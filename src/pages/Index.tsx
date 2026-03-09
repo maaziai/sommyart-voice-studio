@@ -314,6 +314,17 @@ const Index = () => {
           <Library className="w-4 h-4 mr-2" />
           My Sessions
         </Button>
+        {isAdmin && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/admin')}
+            className="bg-background/80 backdrop-blur-sm border-border/50 shadow-md"
+          >
+            <Shield className="w-4 h-4 mr-2" />
+            Admin
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
