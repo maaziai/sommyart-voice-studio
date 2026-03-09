@@ -155,18 +155,13 @@ const Auth = () => {
           });
         }
       } else if (mode === 'reset') {
-        const { error } = await updatePassword(padPin(pin));
-        if (error) {
-          toast({
-            title: 'PIN Update Failed',
-            description: error.message,
-            variant: 'destructive',
-          });
+        const { data, error: fnError } = await supabase.functions.invoke('auth-pin', {
+          body: { action: 'update_password', pin },
+        });
+        if (fnError || !data?.success) {
+          toast({ title: 'PIN Update Failed', description: data?.error || fnError?.message || 'Failed to update PIN.', variant: 'destructive' });
         } else {
-          toast({
-            title: 'PIN Updated!',
-            description: 'Your PIN has been successfully changed.',
-          });
+          toast({ title: 'PIN Updated!', description: 'Your PIN has been successfully changed.' });
           navigate('/studio');
         }
       }
