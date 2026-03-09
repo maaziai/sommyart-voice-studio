@@ -17,9 +17,6 @@ import AppleSignInButton from '@/components/auth/AppleSignInButton';
 const emailSchema = z.string().email('Please enter a valid email address');
 const pinSchema = z.string().length(4, 'PIN must be exactly 4 digits').regex(/^\d{4}$/, 'PIN must contain only digits');
 
-// Pad PIN to meet minimum password length requirement
-const padPin = (pin: string) => `SA${pin}`;
-
 type AuthMode = 'login' | 'signup' | 'forgot' | 'reset';
 
 const Auth = () => {
