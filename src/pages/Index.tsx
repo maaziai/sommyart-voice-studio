@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Mic, Download, Volume2, Split, LogOut, Play, Pause, Library } from "lucide-react";
+import { Loader2, Mic, Download, Volume2, Split, LogOut, Play, Pause, Library, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
 import sommyartLogo from "@/assets/sommyart-logo.jpg";
@@ -91,7 +91,7 @@ const Index = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [clonedVoices, setClonedVoices] = useState<ClonedVoice[]>([]);
   const { toast } = useToast();
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   // Redirect to auth if not logged in
@@ -314,6 +314,17 @@ const Index = () => {
           <Library className="w-4 h-4 mr-2" />
           My Sessions
         </Button>
+        {isAdmin && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/admin')}
+            className="bg-background/80 backdrop-blur-sm border-border/50 shadow-md"
+          >
+            <Shield className="w-4 h-4 mr-2" />
+            Admin
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
