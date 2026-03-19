@@ -99,7 +99,7 @@ const Library = () => {
     if (!gen.audio_url) return;
     const link = document.createElement("a");
     link.href = gen.audio_url;
-    link.download = `sommyart-voice-${Date.now()}.wav`;
+    link.download = `sommyart-voice-${Date.now()}.mp3`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

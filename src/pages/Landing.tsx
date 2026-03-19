@@ -52,7 +52,7 @@ const Landing = () => {
         <div className="max-w-5xl mx-auto text-center space-y-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full text-sm text-primary font-medium animate-fade-in">
             <Sparkles className="w-4 h-4" />
-            Powered by Google Gemini 2.5 Flash TTS
+            Powered by ElevenLabs Multilingual V2
           </div>
 
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold leading-tight">
@@ -210,7 +210,7 @@ const Landing = () => {
             {[
               {
                 icon: Mic,
-                title: "6 Premium Voices",
+                title: "8 Premium Voices",
                 description: "Choose from natural-sounding male and female voices with unique personalities.",
                 color: "primary"
               },
@@ -241,7 +241,7 @@ const Landing = () => {
               {
                 icon: Volume2,
                 title: "High Quality Audio",
-                description: "Download studio-quality WAV files ready for any production.",
+                description: "Download studio-quality MP3 files ready for any production.",
                 color: "accent"
               }
             ].map((feature, i) => (
@@ -299,11 +299,11 @@ const Landing = () => {
             <div className="flex items-center gap-3">
               <img src={sommyartLogo} alt="Sommyart Labs" className="w-8 h-8 rounded-lg" />
               <span className="text-sm text-muted-foreground">
-                © 2024 Sommyart Labs. AI Voice Generation.
+                © 2025 Sommyart Labs. AI Voice Generation.
               </span>
             </div>
             <div className="text-sm text-muted-foreground">
-              Powered by Google Gemini 2.5 Flash TTS
+              Powered by ElevenLabs Multilingual V2
             </div>
           </div>
         </div>

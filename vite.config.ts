@@ -47,6 +47,8 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff,woff2}"],
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ].filter(Boolean),
