@@ -303,7 +303,7 @@ const Landing = () => {
               </span>
             </div>
             <div className="text-sm text-muted-foreground">
-              Powered by Google Gemini 2.5 Flash TTS
+              Powered by ElevenLabs Multilingual V2
             </div>
           </div>
         </div>
