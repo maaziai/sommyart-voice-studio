@@ -52,7 +52,7 @@ const Landing = () => {
         <div className="max-w-5xl mx-auto text-center space-y-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full text-sm text-primary font-medium animate-fade-in">
             <Sparkles className="w-4 h-4" />
-            Powered by Google Gemini 2.5 Flash TTS
+            Powered by ElevenLabs Multilingual V2
           </div>
 
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold leading-tight">
