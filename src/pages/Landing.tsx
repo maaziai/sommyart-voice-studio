@@ -241,7 +241,7 @@ const Landing = () => {
               {
                 icon: Volume2,
                 title: "High Quality Audio",
-                description: "Download studio-quality WAV files ready for any production.",
+                description: "Download studio-quality MP3 files ready for any production.",
                 color: "accent"
               }
             ].map((feature, i) => (
