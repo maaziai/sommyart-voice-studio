@@ -299,7 +299,7 @@ const Landing = () => {
             <div className="flex items-center gap-3">
               <img src={sommyartLogo} alt="Sommyart Labs" className="w-8 h-8 rounded-lg" />
               <span className="text-sm text-muted-foreground">
-                © 2024 Sommyart Labs. AI Voice Generation.
+                © 2025 Sommyart Labs. AI Voice Generation.
               </span>
             </div>
             <div className="text-sm text-muted-foreground">

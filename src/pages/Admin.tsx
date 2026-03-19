@@ -56,18 +56,6 @@ const Admin = () => {
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-users", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        body: undefined,
-      });
-      // The invoke for GET with query params needs a workaround
-      // Use POST with action in body instead
-    } catch {
-      // ignore, we'll use the direct approach below
-    }
-
-    try {
       const session = (await supabase.auth.getSession()).data.session;
       if (!session) return;
 
