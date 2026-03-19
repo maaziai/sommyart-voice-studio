@@ -210,7 +210,7 @@ const Landing = () => {
             {[
               {
                 icon: Mic,
-                title: "6 Premium Voices",
+                title: "8 Premium Voices",
                 description: "Choose from natural-sounding male and female voices with unique personalities.",
                 color: "primary"
               },
