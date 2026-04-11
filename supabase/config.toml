@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.auth-pin]
 verify_jwt = false
+
+[functions.getotp]
+verify_jwt = false
