@@ -102,7 +102,7 @@ const Auth = () => {
           } else if (errMsg.includes('Email not confirmed')) {
             setPendingEmail(email);
             setShowOtpVerification(true);
-            await supabase.auth.resend({ type: 'signup', email });
+            await supabase.functions.invoke('getotp', { body: { action: 'send', email } });
             toast({ title: 'Email Not Verified', description: 'Please verify your email. We sent a new code.' });
           } else {
             toast({ title: 'Login Failed', description: errMsg, variant: 'destructive' });
