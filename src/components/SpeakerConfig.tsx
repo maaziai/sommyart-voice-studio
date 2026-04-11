@@ -10,14 +10,14 @@ export interface Speaker {
 }
 
 export const availableVoices = [
-  { value: "Brian", label: "Brian (Male)" },
-  { value: "Sarah", label: "Sarah (Female)" },
-  { value: "George", label: "Josmart (Male Deep)" },
-  { value: "Bill", label: "Maazi (Male Elderly)" },
-  { value: "Lily", label: "Chisom (Female Soft)" },
-  { value: "Alice", label: "Amara (Female Warm)" },
-  { value: "Liam", label: "Chimkadibia (Male Young)" },
-  { value: "River", label: "Mmesoma (Neutral)" },
+  { value: "Kore", label: "Kore (Female)" },
+  { value: "Puck", label: "Puck (Male)" },
+  { value: "Charon", label: "Charon (Male Deep)" },
+  { value: "Fenrir", label: "Fenrir (Male Bold)" },
+  { value: "Aoede", label: "Aoede (Female Warm)" },
+  { value: "Leda", label: "Leda (Female Soft)" },
+  { value: "Orus", label: "Orus (Male Calm)" },
+  { value: "Zephyr", label: "Zephyr (Neutral)" },
 ];
 
 interface SpeakerConfigProps {
