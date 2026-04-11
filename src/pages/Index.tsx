@@ -14,25 +14,25 @@ import { SpeakerConfig, Speaker } from "@/components/SpeakerConfig";
 import { VoiceCloning } from "@/components/VoiceCloning";
 
 const voiceOptions = [
-  { value: "Brian", label: "Male Voice (Brian)" },
-  { value: "Sarah", label: "Female Voice (Sarah)" },
-  { value: "George", label: "Josmart (Male Deep)" },
-  { value: "Bill", label: "Maazi (Male Elderly)" },
-  { value: "Lily", label: "Chisom (Female Soft)" },
-  { value: "Alice", label: "Amara (Female Warm)" },
-  { value: "Liam", label: "Chimkadibia (Male Young)" },
-  { value: "River", label: "Mmesoma (Neutral Storyteller)" },
+  { value: "Kore", label: "Kore (Female)" },
+  { value: "Puck", label: "Puck (Male)" },
+  { value: "Charon", label: "Charon (Male Deep)" },
+  { value: "Fenrir", label: "Fenrir (Male Bold)" },
+  { value: "Aoede", label: "Aoede (Female Warm)" },
+  { value: "Leda", label: "Leda (Female Soft)" },
+  { value: "Orus", label: "Orus (Male Calm)" },
+  { value: "Zephyr", label: "Zephyr (Neutral)" },
 ];
 
 const defaultSpeakers: Speaker[] = [
-  { id: crypto.randomUUID(), name: "Speaker1", voice: "Brian" },
-  { id: crypto.randomUUID(), name: "Speaker2", voice: "Sarah" },
+  { id: crypto.randomUUID(), name: "Speaker1", voice: "Puck" },
+  { id: crypto.randomUUID(), name: "Speaker2", voice: "Kore" },
 ];
 
 // Default split voice mapping
 const defaultSplitVoices = {
-  male: "Brian",
-  female: "Sarah",
+  male: "Puck",
+  female: "Kore",
 };
 
 // Action tags that should pass through to TTS (not treated as voice switches)
@@ -81,7 +81,7 @@ type VoiceMode = "single" | "multi" | "split";
 
 const Index = () => {
   const [text, setText] = useState("");
-  const [selectedVoice, setSelectedVoice] = useState("Brian");
+  const [selectedVoice, setSelectedVoice] = useState("Kore");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
