@@ -165,7 +165,7 @@ const Index = () => {
     setIsPlaying(false);
 
     try {
-      console.log("Generating TTS with ElevenLabs, mode:", voiceMode);
+      console.log("Generating TTS with Gemini, mode:", voiceMode);
       
       let processedText = text;
       let useSpeakers: { name: string; voice: string }[] | undefined;
@@ -276,7 +276,7 @@ const Index = () => {
     
     const link = document.createElement('a');
     link.href = generatedAudio;
-    link.download = `sommyart-voice-${Date.now()}.mp3`;
+    link.download = `sommyart-voice-${Date.now()}.wav`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -388,7 +388,7 @@ const Index = () => {
 
               <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                 <p className="text-sm text-muted-foreground">
-                  🎙️ Powered by <span className="font-semibold text-primary">ElevenLabs Multilingual V2</span> - Studio-quality voice synthesis
+                  🎙️ Powered by <span className="font-semibold text-primary">Google Gemini TTS</span> - Multi-speaker AI voice synthesis
                 </p>
               </div>
 
@@ -643,7 +643,7 @@ const Index = () => {
             </div>
             <h3 className="font-semibold">AI Voice Generation</h3>
             <p className="text-sm text-muted-foreground">
-              Powered by ElevenLabs Multilingual V2 for studio-quality voice synthesis
+              Powered by Google Gemini TTS for natural multi-speaker voice synthesis
             </p>
           </Card>
 
