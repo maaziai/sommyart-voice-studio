@@ -1,27 +1,22 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// ElevenLabs voice ID mapping
-const VOICE_MAP: Record<string, string> = {
-  "Brian": "nPczCjzI2devNBz1zQrb",
-  "Sarah": "EXAVITQu4vr4xnSDxMaL",
-  "George": "JBFqnCBsd6RMkjVDRZzb",
-  "Bill": "pqHfZKP75CvOlQylNhV4",
-  "Lily": "pFZP5JQG7iQjIQuC4Bku",
-  "Alice": "Xb7hH8MSUJpSbSDYk0k2",
-  "Liam": "TX3LPaxmHKxFdv7VOQHJ",
-  "River": "SAz9YHcvj6GT2YYXdXww",
-};
-
-const VALID_VOICES = Object.keys(VOICE_MAP);
+// Gemini TTS voice names
+const VALID_VOICES = [
+  "Kore", "Puck", "Charon", "Fenrir", "Aoede", "Leda", "Orus", "Zephyr",
+];
 
 const RATE_LIMIT_MAX_REQUESTS = 10;
 const RATE_LIMIT_WINDOW_SECONDS = 60;
+
+const GEMINI_TTS_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent";
 
 interface Speaker {
   name: string;
@@ -35,32 +30,95 @@ interface RequestBody {
   voice?: string;
 }
 
-// Generate TTS audio for a single text segment using ElevenLabs
-async function generateSegment(text: string, voiceId: string, apiKey: string): Promise<Uint8Array> {
-  const response = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
-    {
-      method: "POST",
-      headers: {
-        "xi-api-key": apiKey,
-        "Content-Type": "application/json",
+// Create a WAV header for raw PCM data (16-bit, mono, 24kHz)
+function createWavHeader(pcmLength: number): Uint8Array {
+  const sampleRate = 24000;
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+  const blockAlign = numChannels * (bitsPerSample / 8);
+  const dataSize = pcmLength;
+  const fileSize = 36 + dataSize;
+
+  const header = new ArrayBuffer(44);
+  const view = new DataView(header);
+
+  // RIFF header
+  writeString(view, 0, "RIFF");
+  view.setUint32(4, fileSize, true);
+  writeString(view, 8, "WAVE");
+
+  // fmt sub-chunk
+  writeString(view, 12, "fmt ");
+  view.setUint32(16, 16, true); // sub-chunk size
+  view.setUint16(20, 1, true); // PCM format
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+
+  // data sub-chunk
+  writeString(view, 36, "data");
+  view.setUint32(40, dataSize, true);
+
+  return new Uint8Array(header);
+}
+
+function writeString(view: DataView, offset: number, str: string) {
+  for (let i = 0; i < str.length; i++) {
+    view.setUint8(offset + i, str.charCodeAt(i));
+  }
+}
+
+// Call Gemini TTS API
+async function callGeminiTTS(
+  text: string,
+  apiKey: string,
+  voiceName?: string,
+  speakers?: Speaker[]
+): Promise<Uint8Array> {
+  const generationConfig: Record<string, unknown> = {
+    responseModalities: ["AUDIO"],
+  };
+
+  if (speakers && speakers.length >= 2) {
+    // Multi-speaker config
+    generationConfig.speechConfig = {
+      multiSpeakerVoiceConfig: {
+        speakerVoiceConfigs: speakers.map((s) => ({
+          speaker: s.name,
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: s.voice,
+            },
+          },
+        })),
       },
-      body: JSON.stringify({
-        text,
-        model_id: "eleven_multilingual_v2",
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          style: 0.3,
-          use_speaker_boost: true,
+    };
+  } else {
+    // Single speaker config
+    generationConfig.speechConfig = {
+      voiceConfig: {
+        prebuiltVoiceConfig: {
+          voiceName: voiceName || "Kore",
         },
-      }),
-    }
-  );
+      },
+    };
+  }
+
+  const response = await fetch(`${GEMINI_TTS_URL}?key=${apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text }] }],
+      generationConfig,
+    }),
+  });
 
   if (!response.ok) {
     const errText = await response.text();
-    console.error("ElevenLabs API error:", response.status, errText);
+    console.error("Gemini TTS API error:", response.status, errText);
     if (response.status === 429) {
       throw new Error("Service is currently busy. Please try again in a moment.");
     } else if (response.status >= 500) {
@@ -70,28 +128,39 @@ async function generateSegment(text: string, voiceId: string, apiKey: string): P
     }
   }
 
-  const buffer = await response.arrayBuffer();
-  return new Uint8Array(buffer);
+  const data = await response.json();
+  const audioBase64 = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+
+  if (!audioBase64) {
+    throw new Error("No audio data returned from the service.");
+  }
+
+  // Decode base64 to raw PCM bytes
+  const binaryStr = atob(audioBase64);
+  const pcmBytes = new Uint8Array(binaryStr.length);
+  for (let i = 0; i < binaryStr.length; i++) {
+    pcmBytes[i] = binaryStr.charCodeAt(i);
+  }
+
+  return pcmBytes;
 }
 
-// Parse multi-speaker text into segments: [{speaker, text}]
-function parseMultiSpeakerText(text: string, speakers: Speaker[]): { speaker: string; text: string }[] {
-  const speakerNames = speakers.map(s => s.name);
-  // Build regex to split by "SpeakerName:" pattern
-  const pattern = new RegExp(`^(${speakerNames.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')}):\\s*`, 'gmi');
-  
+// Parse multi-speaker text into segments
+function parseMultiSpeakerText(
+  text: string,
+  speakers: Speaker[]
+): { speaker: string; text: string }[] {
+  const speakerNames = speakers.map((s) => s.name);
   const segments: { speaker: string; text: string }[] = [];
-  let lastIndex = 0;
-  let lastSpeaker = speakerNames[0];
-  
-  const lines = text.split('\n');
+
+  const lines = text.split("\n");
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    
+
     let matched = false;
     for (const name of speakerNames) {
-      if (trimmed.toLowerCase().startsWith(name.toLowerCase() + ':')) {
+      if (trimmed.toLowerCase().startsWith(name.toLowerCase() + ":")) {
         const content = trimmed.substring(name.length + 1).trim();
         if (content) {
           segments.push({ speaker: name, text: content });
@@ -101,24 +170,15 @@ function parseMultiSpeakerText(text: string, speakers: Speaker[]): { speaker: st
       }
     }
     if (!matched && trimmed) {
-      // Assign to last speaker or first speaker
-      const prevSpeaker = segments.length > 0 ? segments[segments.length - 1].speaker : speakerNames[0];
+      const prevSpeaker =
+        segments.length > 0
+          ? segments[segments.length - 1].speaker
+          : speakerNames[0];
       segments.push({ speaker: prevSpeaker, text: trimmed });
     }
   }
-  
-  return segments;
-}
 
-// Encode Uint8Array to base64
-function uint8ToBase64(uint8: Uint8Array): string {
-  let binary = '';
-  const chunkSize = 8192;
-  for (let i = 0; i < uint8.length; i += chunkSize) {
-    const chunk = uint8.subarray(i, i + chunkSize);
-    binary += String.fromCharCode(...chunk);
-  }
-  return btoa(binary);
+  return segments;
 }
 
 serve(async (req) => {
@@ -153,21 +213,27 @@ serve(async (req) => {
 
     const userId = claimsData.claims.sub;
 
-    // Rate limiting using database for persistence across instances
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
-                     req.headers.get("x-real-ip") || userId || "unknown";
-    
+    // Rate limiting
+    const clientIp =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip") ||
+      userId ||
+      "unknown";
+
     const serviceClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
-    
-    const { data: allowed, error: rlError } = await serviceClient.rpc('check_rate_limit', {
-      p_identifier: clientIp,
-      p_max_requests: RATE_LIMIT_MAX_REQUESTS,
-      p_window_seconds: RATE_LIMIT_WINDOW_SECONDS,
-    });
-    
+
+    const { data: allowed, error: rlError } = await serviceClient.rpc(
+      "check_rate_limit",
+      {
+        p_identifier: clientIp,
+        p_max_requests: RATE_LIMIT_MAX_REQUESTS,
+        p_window_seconds: RATE_LIMIT_WINDOW_SECONDS,
+      }
+    );
+
     if (rlError || !allowed) {
       return new Response(
         JSON.stringify({ error: "Too many requests. Please wait a moment.", success: false }),
@@ -178,81 +244,65 @@ serve(async (req) => {
     const { text, isMultiSpeaker, speakers, voice }: RequestBody = await req.json();
 
     // Validate text
-    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+    if (!text || typeof text !== "string" || text.trim().length === 0) {
       throw new Error("Text is required and cannot be empty");
     }
-    const sanitizedText = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim();
+    const sanitizedText = text
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+      .trim();
     if (sanitizedText.length === 0) throw new Error("Text is required");
-    if (sanitizedText.length > 10000) throw new Error("Text exceeds maximum length of 10,000 characters.");
+    if (sanitizedText.length > 10000)
+      throw new Error("Text exceeds maximum length of 10,000 characters.");
 
     // Validate voice
     if (voice && !VALID_VOICES.includes(voice)) {
       throw new Error("Invalid voice selection.");
     }
 
-    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
-    if (!ELEVENLABS_API_KEY) {
+    const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
+    if (!GOOGLE_API_KEY) {
       throw new Error("Voice generation service is not properly configured.");
     }
 
-    let audioData: Uint8Array;
+    let pcmData: Uint8Array;
 
     if (isMultiSpeaker && speakers && speakers.length >= 2) {
       // Validate speakers
       if (speakers.length > 10) throw new Error("Too many speakers. Maximum is 10.");
       for (const s of speakers) {
-        if (!s.voice || !VALID_VOICES.includes(s.voice)) throw new Error("Invalid speaker voice.");
-        if (!s.name || s.name.length < 1 || s.name.length > 50) throw new Error("Invalid speaker name.");
+        if (!s.voice || !VALID_VOICES.includes(s.voice))
+          throw new Error("Invalid speaker voice.");
+        if (!s.name || s.name.length < 1 || s.name.length > 50)
+          throw new Error("Invalid speaker name.");
       }
 
-      // Build voice lookup
-      const voiceLookup: Record<string, string> = {};
-      for (const s of speakers) {
-        voiceLookup[s.name.toLowerCase()] = VOICE_MAP[s.voice];
-      }
+      // For Gemini multi-speaker, we pass the full text with speaker names
+      // The API handles multi-speaker natively when using multiSpeakerVoiceConfig
+      console.log(
+        `Multi-speaker: ${speakers.length} speakers, text length: ${sanitizedText.length}`
+      );
 
-      // Parse text into segments
-      const segments = parseMultiSpeakerText(sanitizedText, speakers);
-      console.log(`Multi-speaker: ${segments.length} segments for ${speakers.length} speakers`);
-
-      if (segments.length === 0) {
-        throw new Error("Could not parse speaker segments. Use 'SpeakerName: text' format.");
-      }
-
-      // Generate each segment sequentially (to preserve order)
-      const audioChunks: Uint8Array[] = [];
-      for (const seg of segments) {
-        const elVoiceId = voiceLookup[seg.speaker.toLowerCase()] || VOICE_MAP[speakers[0].voice];
-        console.log(`Generating segment for ${seg.speaker} (${seg.text.substring(0, 40)}...)`);
-        const chunk = await generateSegment(seg.text, elVoiceId, ELEVENLABS_API_KEY);
-        audioChunks.push(chunk);
-      }
-
-      // Concatenate MP3 chunks
-      const totalLength = audioChunks.reduce((sum, c) => sum + c.length, 0);
-      audioData = new Uint8Array(totalLength);
-      let offset = 0;
-      for (const chunk of audioChunks) {
-        audioData.set(chunk, offset);
-        offset += chunk.length;
-      }
+      pcmData = await callGeminiTTS(sanitizedText, GOOGLE_API_KEY, undefined, speakers);
     } else {
       // Single speaker
-      const voiceName = voice || "Brian";
-      const elVoiceId = VOICE_MAP[voiceName];
-      if (!elVoiceId) throw new Error("Invalid voice selection.");
-
-      console.log(`Single speaker: ${voiceName} (${elVoiceId})`);
-      audioData = await generateSegment(sanitizedText, elVoiceId, ELEVENLABS_API_KEY);
+      const voiceName = voice || "Kore";
+      console.log(`Single speaker: ${voiceName}`);
+      pcmData = await callGeminiTTS(sanitizedText, GOOGLE_API_KEY, voiceName);
     }
 
-    console.log("Audio generated, size:", audioData.length, "bytes");
-    const base64 = uint8ToBase64(audioData);
+    // Wrap PCM in WAV
+    const wavHeader = createWavHeader(pcmData.length);
+    const wavData = new Uint8Array(wavHeader.length + pcmData.length);
+    wavData.set(wavHeader, 0);
+    wavData.set(pcmData, wavHeader.length);
+
+    console.log("Audio generated, WAV size:", wavData.length, "bytes");
+    const base64 = base64Encode(wavData);
 
     return new Response(
       JSON.stringify({
         success: true,
-        audioUrl: `data:audio/mpeg;base64,${base64}`,
+        audioUrl: `data:audio/wav;base64,${base64}`,
         message: "Voice generated successfully!",
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -261,7 +311,10 @@ serve(async (req) => {
     console.error("Error in generate-voice:", error);
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : "An unexpected error occurred.",
+        error:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred.",
         success: false,
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
