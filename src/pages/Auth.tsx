@@ -127,17 +127,25 @@ const Auth = () => {
           } else {
             toast({ title: 'Sign Up Failed', description: errMsg, variant: 'destructive' });
           }
-        } else if (data?.needsVerification) {
-          setPendingEmail(email);
-          setShowOtpVerification(true);
-          toast({ title: 'Verification Code Sent', description: 'Please check your email for the 6-digit code.' });
-        } else if (data?.session) {
-          await supabase.auth.setSession({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
+        } else {
+          // Account created (auto-confirmed). Now send GetOTP verification.
+          if (data?.session) {
+            await supabase.auth.setSession({
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token,
+            });
+          }
+          // Send OTP via GetOTP
+          const { data: otpData, error: otpError } = await supabase.functions.invoke('getotp', {
+            body: { action: 'send', email },
           });
-          toast({ title: 'Account Created!', description: 'Welcome to Sommyart Labs!' });
-          navigate('/studio');
+          if (otpError || !otpData?.success) {
+            toast({ title: 'Verification Error', description: 'Account created but failed to send verification code. Please try logging in.', variant: 'destructive' });
+          } else {
+            setPendingEmail(email);
+            setShowOtpVerification(true);
+            toast({ title: 'Verification Code Sent', description: 'Please check your email for the verification code.' });
+          }
         }
       } else if (mode === 'forgot') {
         const { error } = await resetPasswordForEmail(email);
@@ -173,19 +181,17 @@ const Auth = () => {
   const handleOtpVerify = async (otp: string) => {
     setIsLoading(true);
     try {
-      const { error, data } = await supabase.auth.verifyOtp({
-        email: pendingEmail,
-        token: otp,
-        type: 'signup',
+      const { data, error: fnError } = await supabase.functions.invoke('getotp', {
+        body: { action: 'verify', code: otp },
       });
 
-      if (error) {
+      if (fnError || !data?.success) {
         toast({
           title: 'Verification Failed',
-          description: error.message,
+          description: data?.error || 'Invalid or expired code. Please try again.',
           variant: 'destructive',
         });
-      } else if (data.session) {
+      } else {
         toast({
           title: 'Email Verified!',
           description: 'Welcome to Sommyart Labs!',
@@ -199,15 +205,14 @@ const Auth = () => {
 
   const handleResendOtp = async () => {
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: pendingEmail,
+      const { data, error: fnError } = await supabase.functions.invoke('getotp', {
+        body: { action: 'send', email: pendingEmail },
       });
 
-      if (error) {
+      if (fnError || !data?.success) {
         toast({
           title: 'Resend Failed',
-          description: error.message,
+          description: 'Unable to resend code. Please try again.',
           variant: 'destructive',
         });
       } else {
