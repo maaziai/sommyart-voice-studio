@@ -84,7 +84,7 @@ interface ClonedVoice {
   created_at: string;
 }
 
-type VoiceMode = "single" | "multi" | "split";
+type VoiceMode = "single" | "multi" | "split" | "sommyart";
 
 const Index = () => {
   const [text, setText] = useState("");
@@ -95,6 +95,8 @@ const Index = () => {
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("single");
   const [speakers, setSpeakers] = useState<Speaker[]>(defaultSpeakers);
   const [splitVoices, setSplitVoices] = useState(defaultSplitVoices);
+  const [sommyartVoice, setSommyartVoice] = useState<SommyartVoiceKey>("Sommyart-Male");
+  const [isSommyartSpeaking, setIsSommyartSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [clonedVoices, setClonedVoices] = useState<ClonedVoice[]>([]);
   const { toast } = useToast();
