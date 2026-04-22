@@ -435,7 +435,7 @@ const Index = () => {
                   <Mic className="w-4 h-4 text-primary icon-3d-subtle" />
                   Voice Mode
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <Button
                     variant={voiceMode === "single" ? "default" : "outline"}
                     size="sm"
@@ -461,7 +461,20 @@ const Index = () => {
                     <Split className="w-3 h-3 mr-1 icon-3d-subtle" />
                     Split
                   </Button>
+                  <Button
+                    variant={voiceMode === "sommyart" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setVoiceMode("sommyart")}
+                    className="w-full"
+                  >
+                    Sommyart
+                  </Button>
                 </div>
+                {voiceMode === "sommyart" && (
+                  <p className="text-xs text-muted-foreground">
+                    Free in-browser engine using your device's voices. Quality depends on your OS.
+                  </p>
+                )}
               </div>
 
               {/* Split Voice Instructions */}
