@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,9 +9,46 @@ const corsHeaders = {
 
 const GETOTP_API = "https://api.otp.dev/v1/verifications";
 
+// Endpoints that may be called pre-authentication (signup verification flow).
+// We restrict misuse via a shared bootstrap secret header instead of JWT.
+const BOOTSTRAP_HEADER = "x-otp-bootstrap";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Require either a valid Supabase JWT OR a valid bootstrap secret.
+  // This prevents anonymous abuse of the OTP send/verify endpoints.
+  const authHeader = req.headers.get("Authorization");
+  const bootstrapHeader = req.headers.get(BOOTSTRAP_HEADER);
+  const bootstrapSecret = Deno.env.get("GETOTP_BOOTSTRAP_SECRET");
+
+  let authorized = false;
+
+  if (authHeader?.startsWith("Bearer ")) {
+    try {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+      );
+      const token = authHeader.replace("Bearer ", "");
+      const { data, error } = await supabase.auth.getClaims(token);
+      if (!error && data?.claims) authorized = true;
+    } catch {
+      // fall through to bootstrap check
+    }
+  }
+
+  if (!authorized && bootstrapSecret && bootstrapHeader === bootstrapSecret) {
+    authorized = true;
+  }
+
+  if (!authorized) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 
   const apiKey = Deno.env.get("GETOTP_API_KEY");
