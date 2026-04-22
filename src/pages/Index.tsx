@@ -12,6 +12,13 @@ import heroImage from "@/assets/hero-studio.jpg";
 import sommyartLogo from "@/assets/sommyart-logo.jpg";
 import { SpeakerConfig, Speaker } from "@/components/SpeakerConfig";
 import { VoiceCloning } from "@/components/VoiceCloning";
+import {
+  sommyartVoiceProfiles,
+  speakSommyart,
+  stopSommyart,
+  isSommyartTTSSupported,
+  type SommyartVoiceKey,
+} from "@/lib/sommyart-tts";
 
 const voiceOptions = [
   { value: "Kore", label: "Kore (Female)" },
