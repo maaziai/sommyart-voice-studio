@@ -15,10 +15,38 @@ import { VoiceCloning } from "@/components/VoiceCloning";
 import {
   sommyartVoiceProfiles,
   speakSommyart,
+  speakSommyartSequence,
   stopSommyart,
   isSommyartTTSSupported,
   type SommyartVoiceKey,
 } from "@/lib/sommyart-tts";
+
+const sommyartSplitOptions = Object.values(sommyartVoiceProfiles).map((p) => ({
+  value: `sommyart:${p.name}`,
+  label: `🎙 ${p.label}`,
+}));
+
+const isSommyartSplitVoice = (value: string) => value.startsWith("sommyart:");
+const getSommyartKey = (value: string): SommyartVoiceKey =>
+  value.replace(/^sommyart:/, "") as SommyartVoiceKey;
+
+// Parse [MALE]/[FEMALE]-tagged script into ordered segments for local TTS
+const parseSplitSegments = (script: string): { role: "MALE" | "FEMALE"; text: string }[] => {
+  const regex = /\[(MALE|FEMALE)\]/gi;
+  const segments: { role: "MALE" | "FEMALE"; text: string }[] = [];
+  const matches: { role: "MALE" | "FEMALE"; index: number; length: number }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(script)) !== null) {
+    matches.push({ role: m[1].toUpperCase() as "MALE" | "FEMALE", index: m.index, length: m[0].length });
+  }
+  for (let i = 0; i < matches.length; i++) {
+    const start = matches[i].index + matches[i].length;
+    const end = i + 1 < matches.length ? matches[i + 1].index : script.length;
+    const text = script.slice(start, end).trim();
+    if (text) segments.push({ role: matches[i].role, text });
+  }
+  return segments;
+};
 
 const voiceOptions = [
   { value: "Kore", label: "Kore (Female)" },
@@ -220,6 +248,51 @@ const Index = () => {
           setIsGenerating(false);
           return;
         }
+
+        // If either selected voice is a Sommyart browser voice, route locally
+        const maleIsSommyart = isSommyartSplitVoice(splitVoices.male);
+        const femaleIsSommyart = isSommyartSplitVoice(splitVoices.female);
+        if (maleIsSommyart || femaleIsSommyart) {
+          if (!isSommyartTTSSupported()) {
+            toast({
+              title: "Not Supported",
+              description: "Your browser does not support the Sommyart voice engine.",
+              variant: "destructive",
+            });
+            setIsGenerating(false);
+            return;
+          }
+          // Fallback to a default Sommyart profile if only one side is Sommyart
+          const maleKey: SommyartVoiceKey = maleIsSommyart
+            ? getSommyartKey(splitVoices.male)
+            : "Sommyart-Male";
+          const femaleKey: SommyartVoiceKey = femaleIsSommyart
+            ? getSommyartKey(splitVoices.female)
+            : "Mmesoma";
+
+          const segments = parseSplitSegments(text).map((s) => ({
+            text: s.text,
+            profileKey: s.role === "MALE" ? maleKey : femaleKey,
+          }));
+
+          setGeneratedAudio(null);
+          setIsGenerating(false);
+          setIsSommyartSpeaking(true);
+          speakSommyartSequence({
+            segments,
+            onEnd: () => setIsSommyartSpeaking(false),
+            onError: () => {
+              setIsSommyartSpeaking(false);
+              toast({
+                title: "Playback Failed",
+                description: "Sommyart engine could not play this script.",
+                variant: "destructive",
+              });
+            },
+          });
+          return;
+        }
+
         processedText = parseSplitVoiceScript(text);
         useSpeakers = [
           { name: "MALE", voice: splitVoices.male },
@@ -496,6 +569,14 @@ const Index = () => {
                               {option.label}
                             </SelectItem>
                           ))}
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-border mt-1 pt-2">
+                            🎙 Sommyart Voices
+                          </div>
+                          {sommyartSplitOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -507,6 +588,14 @@ const Index = () => {
                         </SelectTrigger>
                         <SelectContent className="bg-popover border-border z-50">
                           {voiceOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-border mt-1 pt-2">
+                            🎙 Sommyart Voices
+                          </div>
+                          {sommyartSplitOptions.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>
