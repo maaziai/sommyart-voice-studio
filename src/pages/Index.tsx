@@ -160,6 +160,34 @@ const Index = () => {
       return;
     }
 
+    // Sommyart browser TTS – speaks directly through the device, no backend call
+    if (voiceMode === "sommyart") {
+      if (!isSommyartTTSSupported()) {
+        toast({
+          title: "Not Supported",
+          description: "Your browser does not support the Sommyart voice engine.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setGeneratedAudio(null);
+      setIsSommyartSpeaking(true);
+      speakSommyart({
+        text,
+        profileKey: sommyartVoice,
+        onEnd: () => setIsSommyartSpeaking(false),
+        onError: () => {
+          setIsSommyartSpeaking(false);
+          toast({
+            title: "Playback Failed",
+            description: "Sommyart engine could not play this text.",
+            variant: "destructive",
+          });
+        },
+      });
+      return;
+    }
+
     if (text.length > 10000) {
       toast({
         title: "Text Too Long",
