@@ -574,14 +574,51 @@ const Index = () => {
                 </div>
               )}
 
+              {/* Sommyart Voice Selection */}
+              {voiceMode === "sommyart" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-foreground">Sommyart Voice</label>
+                  <Select value={sommyartVoice} onValueChange={(v) => setSommyartVoice(v as SommyartVoiceKey)}>
+                    <SelectTrigger className="bg-background/50 border-border/50">
+                      <SelectValue placeholder="Choose a Sommyart voice" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border z-50">
+                      {Object.values(sommyartVoiceProfiles).map((p) => (
+                        <SelectItem key={p.name} value={p.name} className="cursor-pointer">
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {sommyartVoiceProfiles[sommyartVoice].description}
+                  </p>
+                </div>
+              )}
+
               <Button
                 onClick={handleGenerate}
-                disabled={isGenerating || !text.trim()}
+                disabled={
+                  (voiceMode === "sommyart" ? isSommyartSpeaking : isGenerating) ||
+                  !text.trim()
+                }
                 variant="studio"
                 size="lg"
                 className="w-full"
               >
-                {isGenerating ? (
+                {voiceMode === "sommyart" ? (
+                  isSommyartSpeaking ? (
+                    <>
+                      <Volume2 className="w-5 h-5 animate-pulse" />
+                      Speaking...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5 icon-3d" />
+                      Play with Sommyart
+                    </>
+                  )
+                ) : isGenerating ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
                     Generating Voice...
@@ -593,6 +630,21 @@ const Index = () => {
                   </>
                 )}
               </Button>
+
+              {voiceMode === "sommyart" && isSommyartSpeaking && (
+                <Button
+                  onClick={() => {
+                    stopSommyart();
+                    setIsSommyartSpeaking(false);
+                  }}
+                  variant="outline"
+                  size="lg"
+                  className="w-full"
+                >
+                  <Pause className="w-5 h-5" />
+                  Stop
+                </Button>
+              )}
             </div>
 
             {/* Right Column - Preview */}
