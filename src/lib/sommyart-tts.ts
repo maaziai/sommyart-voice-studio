@@ -132,6 +132,66 @@ export function stopSommyart(): void {
   if (isSommyartTTSSupported()) window.speechSynthesis.cancel();
 }
 
+export interface SommyartSegment {
+  text: string;
+  profileKey: SommyartVoiceKey;
+}
+
+export interface SpeakSommyartSequenceOptions {
+  segments: SommyartSegment[];
+  onStart?: () => void;
+  onEnd?: () => void;
+  onError?: (err: SpeechSynthesisErrorEvent) => void;
+}
+
+export function speakSommyartSequence({
+  segments,
+  onStart,
+  onEnd,
+  onError,
+}: SpeakSommyartSequenceOptions): void {
+  if (!isSommyartTTSSupported() || segments.length === 0) return;
+  const synth = window.speechSynthesis;
+  synth.cancel();
+
+  let started = false;
+  let index = 0;
+
+  const speakNext = () => {
+    if (index >= segments.length) {
+      onEnd?.();
+      return;
+    }
+    const { text, profileKey } = segments[index++];
+    const profile = sommyartVoiceProfiles[profileKey];
+    if (!profile || !text.trim()) {
+      speakNext();
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voice = getBestVoice(profile);
+    if (voice) utterance.voice = voice;
+    utterance.rate = profile.rate;
+    utterance.pitch = profile.pitch;
+    utterance.volume = profile.volume;
+    utterance.lang = voice?.lang || profile.voiceMatch[0] || "en-US";
+    utterance.onstart = () => {
+      if (!started) {
+        started = true;
+        onStart?.();
+      }
+    };
+    utterance.onend = speakNext;
+    utterance.onerror = (e) => {
+      onError?.(e);
+      speakNext();
+    };
+    synth.speak(utterance);
+  };
+
+  speakNext();
+}
+
 export function pauseSommyart(): void {
   if (isSommyartTTSSupported()) window.speechSynthesis.pause();
 }
