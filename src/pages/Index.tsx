@@ -248,6 +248,51 @@ const Index = () => {
           setIsGenerating(false);
           return;
         }
+
+        // If either selected voice is a Sommyart browser voice, route locally
+        const maleIsSommyart = isSommyartSplitVoice(splitVoices.male);
+        const femaleIsSommyart = isSommyartSplitVoice(splitVoices.female);
+        if (maleIsSommyart || femaleIsSommyart) {
+          if (!isSommyartTTSSupported()) {
+            toast({
+              title: "Not Supported",
+              description: "Your browser does not support the Sommyart voice engine.",
+              variant: "destructive",
+            });
+            setIsGenerating(false);
+            return;
+          }
+          // Fallback to a default Sommyart profile if only one side is Sommyart
+          const maleKey: SommyartVoiceKey = maleIsSommyart
+            ? getSommyartKey(splitVoices.male)
+            : "Sommyart-Male";
+          const femaleKey: SommyartVoiceKey = femaleIsSommyart
+            ? getSommyartKey(splitVoices.female)
+            : "Mmesoma";
+
+          const segments = parseSplitSegments(text).map((s) => ({
+            text: s.text,
+            profileKey: s.role === "MALE" ? maleKey : femaleKey,
+          }));
+
+          setGeneratedAudio(null);
+          setIsGenerating(false);
+          setIsSommyartSpeaking(true);
+          speakSommyartSequence({
+            segments,
+            onEnd: () => setIsSommyartSpeaking(false),
+            onError: () => {
+              setIsSommyartSpeaking(false);
+              toast({
+                title: "Playback Failed",
+                description: "Sommyart engine could not play this script.",
+                variant: "destructive",
+              });
+            },
+          });
+          return;
+        }
+
         processedText = parseSplitVoiceScript(text);
         useSpeakers = [
           { name: "MALE", voice: splitVoices.male },
