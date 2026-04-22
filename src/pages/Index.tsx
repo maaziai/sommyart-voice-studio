@@ -12,6 +12,13 @@ import heroImage from "@/assets/hero-studio.jpg";
 import sommyartLogo from "@/assets/sommyart-logo.jpg";
 import { SpeakerConfig, Speaker } from "@/components/SpeakerConfig";
 import { VoiceCloning } from "@/components/VoiceCloning";
+import {
+  sommyartVoiceProfiles,
+  speakSommyart,
+  stopSommyart,
+  isSommyartTTSSupported,
+  type SommyartVoiceKey,
+} from "@/lib/sommyart-tts";
 
 const voiceOptions = [
   { value: "Kore", label: "Kore (Female)" },
@@ -77,7 +84,7 @@ interface ClonedVoice {
   created_at: string;
 }
 
-type VoiceMode = "single" | "multi" | "split";
+type VoiceMode = "single" | "multi" | "split" | "sommyart";
 
 const Index = () => {
   const [text, setText] = useState("");
@@ -88,6 +95,8 @@ const Index = () => {
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("single");
   const [speakers, setSpeakers] = useState<Speaker[]>(defaultSpeakers);
   const [splitVoices, setSplitVoices] = useState(defaultSplitVoices);
+  const [sommyartVoice, setSommyartVoice] = useState<SommyartVoiceKey>("Sommyart-Male");
+  const [isSommyartSpeaking, setIsSommyartSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [clonedVoices, setClonedVoices] = useState<ClonedVoice[]>([]);
   const { toast } = useToast();
@@ -147,6 +156,34 @@ const Index = () => {
         title: "Text Required",
         description: "Please enter some text to convert to voice.",
         variant: "destructive",
+      });
+      return;
+    }
+
+    // Sommyart browser TTS – speaks directly through the device, no backend call
+    if (voiceMode === "sommyart") {
+      if (!isSommyartTTSSupported()) {
+        toast({
+          title: "Not Supported",
+          description: "Your browser does not support the Sommyart voice engine.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setGeneratedAudio(null);
+      setIsSommyartSpeaking(true);
+      speakSommyart({
+        text,
+        profileKey: sommyartVoice,
+        onEnd: () => setIsSommyartSpeaking(false),
+        onError: () => {
+          setIsSommyartSpeaking(false);
+          toast({
+            title: "Playback Failed",
+            description: "Sommyart engine could not play this text.",
+            variant: "destructive",
+          });
+        },
       });
       return;
     }
@@ -398,7 +435,7 @@ const Index = () => {
                   <Mic className="w-4 h-4 text-primary icon-3d-subtle" />
                   Voice Mode
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <Button
                     variant={voiceMode === "single" ? "default" : "outline"}
                     size="sm"
@@ -424,7 +461,20 @@ const Index = () => {
                     <Split className="w-3 h-3 mr-1 icon-3d-subtle" />
                     Split
                   </Button>
+                  <Button
+                    variant={voiceMode === "sommyart" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setVoiceMode("sommyart")}
+                    className="w-full"
+                  >
+                    Sommyart
+                  </Button>
                 </div>
+                {voiceMode === "sommyart" && (
+                  <p className="text-xs text-muted-foreground">
+                    Free in-browser engine using your device's voices. Quality depends on your OS.
+                  </p>
+                )}
               </div>
 
               {/* Split Voice Instructions */}
@@ -524,14 +574,51 @@ const Index = () => {
                 </div>
               )}
 
+              {/* Sommyart Voice Selection */}
+              {voiceMode === "sommyart" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-foreground">Sommyart Voice</label>
+                  <Select value={sommyartVoice} onValueChange={(v) => setSommyartVoice(v as SommyartVoiceKey)}>
+                    <SelectTrigger className="bg-background/50 border-border/50">
+                      <SelectValue placeholder="Choose a Sommyart voice" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border z-50">
+                      {Object.values(sommyartVoiceProfiles).map((p) => (
+                        <SelectItem key={p.name} value={p.name} className="cursor-pointer">
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {sommyartVoiceProfiles[sommyartVoice].description}
+                  </p>
+                </div>
+              )}
+
               <Button
                 onClick={handleGenerate}
-                disabled={isGenerating || !text.trim()}
+                disabled={
+                  (voiceMode === "sommyart" ? isSommyartSpeaking : isGenerating) ||
+                  !text.trim()
+                }
                 variant="studio"
                 size="lg"
                 className="w-full"
               >
-                {isGenerating ? (
+                {voiceMode === "sommyart" ? (
+                  isSommyartSpeaking ? (
+                    <>
+                      <Volume2 className="w-5 h-5 animate-pulse" />
+                      Speaking...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5 icon-3d" />
+                      Play with Sommyart
+                    </>
+                  )
+                ) : isGenerating ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
                     Generating Voice...
@@ -543,6 +630,21 @@ const Index = () => {
                   </>
                 )}
               </Button>
+
+              {voiceMode === "sommyart" && isSommyartSpeaking && (
+                <Button
+                  onClick={() => {
+                    stopSommyart();
+                    setIsSommyartSpeaking(false);
+                  }}
+                  variant="outline"
+                  size="lg"
+                  className="w-full"
+                >
+                  <Pause className="w-5 h-5" />
+                  Stop
+                </Button>
+              )}
             </div>
 
             {/* Right Column - Preview */}
