@@ -11,7 +11,6 @@ import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
 import sommyartLogo from "@/assets/sommyart-logo.jpg";
 import { SpeakerConfig, Speaker } from "@/components/SpeakerConfig";
-import { VoiceCloning } from "@/components/VoiceCloning";
 import {
   sommyartVoiceProfiles,
   speakSommyart,
@@ -105,13 +104,6 @@ const hasSplitVoiceTags = (script: string): boolean => {
   return voiceTagPattern.test(script);
 };
 
-interface ClonedVoice {
-  id: string;
-  name: string;
-  elevenlabs_voice_id: string;
-  created_at: string;
-}
-
 type VoiceMode = "single" | "multi" | "split" | "sommyart";
 
 const Index = () => {
@@ -126,7 +118,6 @@ const Index = () => {
   const [sommyartVoice, setSommyartVoice] = useState<SommyartVoiceKey>("Sommyart-Male");
   const [isSommyartSpeaking, setIsSommyartSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [clonedVoices, setClonedVoices] = useState<ClonedVoice[]>([]);
   const { toast } = useToast();
   const { user, loading, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -305,35 +296,7 @@ const Index = () => {
         useSpeakers = speakers.map(s => ({ name: s.name, voice: s.voice }));
         useMultiSpeaker = true;
       } else {
-        // Single speaker mode - check if it's a cloned voice
-        const clonedVoice = clonedVoices.find(v => v.elevenlabs_voice_id === selectedVoice);
-        
-        if (clonedVoice) {
-          // Use ElevenLabs TTS for cloned voices
-          console.log("Using ElevenLabs TTS for cloned voice:", clonedVoice.name);
-          const { data: elData, error: elError } = await supabase.functions.invoke('elevenlabs-tts', {
-            body: { text: processedText, voiceId: clonedVoice.elevenlabs_voice_id }
-          });
-          if (elError) throw elError;
-          if (elData.success && elData.audioUrl) {
-            setGeneratedAudio(elData.audioUrl);
-            // Save cloned voice generation to session library
-            if (user) {
-              await supabase.from("generations").insert({
-                user_id: user.id,
-                text_input: text.substring(0, 500),
-                voice_id: clonedVoice.name,
-                voice_mode: "cloned",
-                audio_url: elData.audioUrl,
-              });
-            }
-            toast({ title: "Voice Generated!", description: "Your voiceover is ready." });
-          } else {
-            throw new Error(elData.error || "Failed to generate voice");
-          }
-          return;
-        }
-        
+        // Single speaker mode (Gemini prebuilt voices)
         useVoice = selectedVoice;
       }
       
@@ -646,18 +609,6 @@ const Index = () => {
                           {option.label}
                         </SelectItem>
                       ))}
-                      {clonedVoices.length > 0 && (
-                        <>
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-border mt-1 pt-2">
-                            🎤 Your Cloned Voices
-                          </div>
-                          {clonedVoices.map((cv) => (
-                            <SelectItem key={cv.elevenlabs_voice_id} value={cv.elevenlabs_voice_id} className="cursor-pointer">
-                              {cv.name} (Cloned)
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -809,15 +760,13 @@ const Index = () => {
                 </Button>
               )}
 
-              <VoiceCloning onVoicesChange={setClonedVoices} />
-
               <Card className="p-4 bg-accent/5 border-accent/20">
                 <h3 className="text-sm font-semibold mb-2 text-foreground">💡 Pro Tips</h3>
                 <ul className="text-xs text-muted-foreground space-y-1">
                   <li>• Keep sentences clear and well-punctuated</li>
                   <li>• Use natural language for best results</li>
                   <li>• Try different voices to find your perfect match</li>
-                  <li>• Clone your own voice for personalized audio</li>
+                  <li>• Powered by Gemini AI prebuilt voices</li>
                 </ul>
               </Card>
             </div>
