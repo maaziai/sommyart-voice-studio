@@ -14,30 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      cloned_voices: {
-        Row: {
-          created_at: string
-          elevenlabs_voice_id: string
-          id: string
-          name: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          elevenlabs_voice_id: string
-          id?: string
-          name: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          elevenlabs_voice_id?: string
-          id?: string
-          name?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       generations: {
         Row: {
           audio_url: string | null

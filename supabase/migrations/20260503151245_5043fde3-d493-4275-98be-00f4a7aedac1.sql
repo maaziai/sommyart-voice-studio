@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS public.cloned_voices CASCADE;
