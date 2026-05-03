@@ -2,7 +2,15 @@
 // Browser-based speech synthesis using the Web Speech API.
 // Used as a free, offline-capable alternative to the Gemini TTS backend.
 
-export type SommyartVoiceKey = "Sommyart-Male" | "Baba" | "Mmesoma" | "Mama";
+export type SommyartVoiceKey =
+  | "Sommyart-Male"
+  | "Baba"
+  | "Mmesoma"
+  | "Mama"
+  | "Josmart"
+  | "Maazi"
+  | "Chisom"
+  | "Amara";
 
 export interface SommyartVoiceProfile {
   name: SommyartVoiceKey;
@@ -54,6 +62,46 @@ export const sommyartVoiceProfiles: Record<SommyartVoiceKey, SommyartVoiceProfil
     pitch: 0.7,
     volume: 1,
     voiceMatch: ["en-GB", "en-US"],
+    preferredGender: "female",
+  },
+  Josmart: {
+    name: "Josmart",
+    label: "Josmart - Deep Male",
+    description: "Rich, deep male voice with authority",
+    rate: 0.85,
+    pitch: 0.55,
+    volume: 1,
+    voiceMatch: ["en-GB", "en-US"],
+    preferredGender: "male",
+  },
+  Maazi: {
+    name: "Maazi",
+    label: "Maazi - Playful Male",
+    description: "Lively, playful male voice with character",
+    rate: 1.05,
+    pitch: 1.1,
+    volume: 1,
+    voiceMatch: ["en-NG", "en-GB", "en-US"],
+    preferredGender: "male",
+  },
+  Chisom: {
+    name: "Chisom",
+    label: "Chisom - Soft Female",
+    description: "Soft, smooth and sultry female voice",
+    rate: 0.9,
+    pitch: 1.05,
+    volume: 1,
+    voiceMatch: ["en-GB", "en-US"],
+    preferredGender: "female",
+  },
+  Amara: {
+    name: "Amara",
+    label: "Amara - Warm Female",
+    description: "Enthusiastic, warm and inviting female voice",
+    rate: 1,
+    pitch: 1.25,
+    volume: 1,
+    voiceMatch: ["en-NG", "en-US"],
     preferredGender: "female",
   },
 };
