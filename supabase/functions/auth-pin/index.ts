@@ -62,12 +62,7 @@ serve(async (req) => {
       const adminClient = createClient(supabaseUrl, serviceRoleKey);
       const normalizedEmail = email.toLowerCase().trim();
 
-      // Pre-check lock status
-      const { data: preCheck } = await adminClient.rpc("check_and_record_login_attempt", {
-        p_email: normalizedEmail,
-        p_success: true, // dry check; we'll record real result below
-      });
-      // The RPC with success=true clears attempts; instead use a peek query:
+      // Pre-check lock status (peek without mutating)
       const { data: lockRow } = await adminClient
         .from("failed_login_attempts")
         .select("locked_until")
