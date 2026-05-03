@@ -58,18 +58,66 @@ serve(async (req) => {
       if (!email || !pin) throw new Error("Email and PIN are required.");
       if (!/^\d{4}$/.test(pin)) throw new Error("PIN must be exactly 4 digits.");
 
+      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+      const normalizedEmail = email.toLowerCase().trim();
+
+      // Pre-check lock status
+      const { data: preCheck } = await adminClient.rpc("check_and_record_login_attempt", {
+        p_email: normalizedEmail,
+        p_success: true, // dry check; we'll record real result below
+      });
+      // The RPC with success=true clears attempts; instead use a peek query:
+      const { data: lockRow } = await adminClient
+        .from("failed_login_attempts")
+        .select("locked_until")
+        .eq("email", normalizedEmail)
+        .maybeSingle();
+
+      if (lockRow?.locked_until && new Date(lockRow.locked_until) > new Date()) {
+        const secondsRemaining = Math.ceil(
+          (new Date(lockRow.locked_until).getTime() - Date.now()) / 1000
+        );
+        const minutes = Math.ceil(secondsRemaining / 60);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: `Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+            locked: true,
+            seconds_remaining: secondsRemaining,
+          }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       const supabase = createClient(supabaseUrl, supabaseAnonKey);
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password: padPin(pin),
       });
 
       if (error) {
+        const { data: result } = await adminClient.rpc("check_and_record_login_attempt", {
+          p_email: normalizedEmail,
+          p_success: false,
+        });
+        let userMessage = "Invalid email or PIN.";
+        if (result && (result as any).just_locked) {
+          userMessage = "Too many failed attempts. Account locked for 15 minutes.";
+        } else if (result && typeof (result as any).attempts_remaining === "number") {
+          userMessage = `Invalid email or PIN. ${(result as any).attempts_remaining} attempt(s) remaining.`;
+        }
         return new Response(
-          JSON.stringify({ success: false, error: error.message }),
+          JSON.stringify({ success: false, error: userMessage }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      // Success: clear failed attempts
+      await adminClient.rpc("check_and_record_login_attempt", {
+        p_email: normalizedEmail,
+        p_success: true,
+      });
 
       return new Response(
         JSON.stringify({ success: true, session: data.session }),
