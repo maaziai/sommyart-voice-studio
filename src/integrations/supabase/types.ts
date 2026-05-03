@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      failed_login_attempts: {
+        Row: {
+          attempt_count: number
+          email: string
+          first_attempt_at: string
+          locked_until: string | null
+        }
+        Insert: {
+          attempt_count?: number
+          email: string
+          first_attempt_at?: string
+          locked_until?: string | null
+        }
+        Update: {
+          attempt_count?: number
+          email?: string
+          first_attempt_at?: string
+          locked_until?: string | null
+        }
+        Relationships: []
+      }
       generations: {
         Row: {
           audio_url: string | null
@@ -91,6 +112,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_and_record_login_attempt: {
+        Args: {
+          p_email: string
+          p_lockout_seconds?: number
+          p_max_attempts?: number
+          p_success: boolean
+          p_window_seconds?: number
+        }
+        Returns: Json
+      }
       check_rate_limit: {
         Args: {
           p_identifier: string
