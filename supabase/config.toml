@@ -3,12 +3,6 @@ project_id = "qmceamjrodutpdpeigya"
 [functions.generate-voice]
 verify_jwt = false
 
-[functions.clone-voice]
-verify_jwt = false
-
-[functions.elevenlabs-tts]
-verify_jwt = false
-
 [functions.auth-pin]
 verify_jwt = false
 
