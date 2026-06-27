@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
 import sommyartLogo from "@/assets/sommyart-logo.jpg";
 import { SpeakerConfig, Speaker } from "@/components/SpeakerConfig";
+import MusicGenerator from "@/components/MusicGenerator";
 import {
   sommyartVoiceProfiles,
   speakSommyart,
@@ -772,7 +773,13 @@ const Index = () => {
             </div>
           </div>
         </Card>
+
+        {/* Music Generation Section */}
+        <div className="mt-8">
+          <MusicGenerator />
+        </div>
       </div>
+
 
       {/* Features Section */}
       <div className="container mx-auto px-4 py-16 max-w-6xl">
