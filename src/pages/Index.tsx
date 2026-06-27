@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
 import sommyartLogo from "@/assets/sommyart-logo.jpg";
 import { SpeakerConfig, Speaker } from "@/components/SpeakerConfig";
+import MusicGenerator from "@/components/MusicGenerator";
 import {
   sommyartVoiceProfiles,
   speakSommyart,
