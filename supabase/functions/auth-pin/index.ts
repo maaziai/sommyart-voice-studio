@@ -131,6 +131,10 @@ serve(async (req) => {
           return jsonResponse({ success: false, error: "Account already exists. Please sign in." }, 400);
         }
 
+        if (existingUser.email_confirmed_at) {
+          return jsonResponse({ success: false, error: "Account already exists. Please sign in instead." }, 400);
+        }
+
         const { error: updateError } = await adminClient.auth.admin.updateUserById(existingUser.id, {
           password: padPin(pin),
           email_confirm: true,
