@@ -29,13 +29,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Fetch user roles from database
   const fetchUserRoles = async (userId: string) => {
     try {
-      const { data, error } = await supabase.rpc('get_user_roles', { _user_id: userId });
-      if (error) {
-        console.error('Error fetching user roles:', error);
-        setRoles([]);
-        return;
-      }
-      setRoles((data as AppRole[]) || []);
+      const roleChecks = await Promise.all(
+        (['admin', 'moderator', 'user'] as AppRole[]).map(async (role) => {
+          const { data, error } = await supabase.rpc('has_role', { _user_id: userId, _role: role });
+          return !error && data ? role : null;
+        })
+      );
+      setRoles(roleChecks.filter((role): role is AppRole => role !== null));
     } catch (err) {
       console.error('Error fetching user roles:', err);
       setRoles([]);
@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const resetPasswordForEmail = async (email: string) => {
-    const redirectUrl = `${window.location.origin}/auth?mode=reset`;
+    const redirectUrl = `${window.location.origin}/reset-password`;
     
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: redirectUrl

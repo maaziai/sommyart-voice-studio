@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -30,18 +30,20 @@ const Auth = () => {
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [showOtpVerification, setShowOtpVerification] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
+  const [pendingPin, setPendingPin] = useState('');
   
-  const { user, loading, signIn, resetPasswordForEmail, updatePassword, session } = useAuth();
+  const { user, loading, resetPasswordForEmail, session } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
 
   // Check for reset mode from URL
   useEffect(() => {
     const urlMode = searchParams.get('mode');
-    if (urlMode === 'reset' && session) {
+    if ((urlMode === 'reset' || location.pathname === '/reset-password') && session) {
       setMode('reset');
     }
-  }, [searchParams, session]);
+  }, [searchParams, session, location.pathname]);
 
   // Redirect if already logged in (except for reset mode)
   useEffect(() => {
@@ -101,8 +103,8 @@ const Auth = () => {
             toast({ title: 'Login Failed', description: 'Invalid email or PIN. Please try again.', variant: 'destructive' });
           } else if (errMsg.includes('Email not confirmed')) {
             setPendingEmail(email);
+            setPendingPin(pin);
             setShowOtpVerification(true);
-            await supabase.functions.invoke('getotp', { body: { action: 'send', email } });
             toast({ title: 'Email Not Verified', description: 'Please verify your email. We sent a new code.' });
           } else {
             toast({ title: 'Login Failed', description: errMsg, variant: 'destructive' });
@@ -128,24 +130,10 @@ const Auth = () => {
             toast({ title: 'Sign Up Failed', description: errMsg, variant: 'destructive' });
           }
         } else {
-          // Account created (auto-confirmed). Now send GetOTP verification.
-          if (data?.session) {
-            await supabase.auth.setSession({
-              access_token: data.session.access_token,
-              refresh_token: data.session.refresh_token,
-            });
-          }
-          // Send OTP via GetOTP
-          const { data: otpData, error: otpError } = await supabase.functions.invoke('getotp', {
-            body: { action: 'send', email },
-          });
-          if (otpError || !otpData?.success) {
-            toast({ title: 'Verification Error', description: 'Account created but failed to send verification code. Please try logging in.', variant: 'destructive' });
-          } else {
-            setPendingEmail(email);
-            setShowOtpVerification(true);
-            toast({ title: 'Verification Code Sent', description: 'Please check your email for the verification code.' });
-          }
+          setPendingEmail(email);
+          setPendingPin(pin);
+          setShowOtpVerification(true);
+          toast({ title: 'Verification Code Sent', description: 'Please check your email for the verification code.' });
         }
       } else if (mode === 'forgot') {
         const { error } = await resetPasswordForEmail(email);
@@ -181,8 +169,8 @@ const Auth = () => {
   const handleOtpVerify = async (otp: string) => {
     setIsLoading(true);
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('getotp', {
-        body: { action: 'verify', code: otp },
+      const { data, error: fnError } = await supabase.functions.invoke('auth-pin', {
+        body: { action: 'verify_signup', email: pendingEmail, pin: pendingPin, code: otp },
       });
 
       if (fnError || !data?.success) {
@@ -192,6 +180,12 @@ const Auth = () => {
           variant: 'destructive',
         });
       } else {
+        if (data?.session) {
+          await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
+        }
         toast({
           title: 'Email Verified!',
           description: 'Welcome to Sommyart Labs!',
@@ -205,8 +199,8 @@ const Auth = () => {
 
   const handleResendOtp = async () => {
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('getotp', {
-        body: { action: 'send', email: pendingEmail },
+      const { data, error: fnError } = await supabase.functions.invoke('auth-pin', {
+        body: { action: 'signup', email: pendingEmail, pin: pendingPin },
       });
 
       if (fnError || !data?.success) {
@@ -233,6 +227,7 @@ const Auth = () => {
   const handleBackFromOtp = () => {
     setShowOtpVerification(false);
     setPendingEmail('');
+    setPendingPin('');
   };
 
   const switchMode = (newMode: AuthMode) => {
@@ -242,6 +237,8 @@ const Auth = () => {
     setConfirmPin('');
     setResetEmailSent(false);
     setShowOtpVerification(false);
+    setPendingEmail('');
+    setPendingPin('');
   };
 
   const handleEmailChange = (value: string) => {
