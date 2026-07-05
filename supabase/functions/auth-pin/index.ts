@@ -160,6 +160,7 @@ serve(async (req) => {
     } else if (action === "signin") {
       if (!email || !pin) throw new Error("Email and PIN are required.");
       if (!/^\d{4}$/.test(pin)) throw new Error("PIN must be exactly 4 digits.");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Invalid email.");
 
       const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const adminClient = createClient(supabaseUrl, serviceRoleKey);

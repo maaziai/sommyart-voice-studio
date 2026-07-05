@@ -105,7 +105,6 @@ const Auth = () => {
             setPendingEmail(email);
             setPendingPin(pin);
             setShowOtpVerification(true);
-            await supabase.functions.invoke('auth-pin', { body: { action: 'signup', email, pin } });
             toast({ title: 'Email Not Verified', description: 'Please verify your email. We sent a new code.' });
           } else {
             toast({ title: 'Login Failed', description: errMsg, variant: 'destructive' });
