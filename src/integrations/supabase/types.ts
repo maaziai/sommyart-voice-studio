@@ -14,57 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      failed_login_attempts: {
-        Row: {
-          attempt_count: number
-          email: string
-          first_attempt_at: string
-          locked_until: string | null
-        }
-        Insert: {
-          attempt_count?: number
-          email: string
-          first_attempt_at?: string
-          locked_until?: string | null
-        }
-        Update: {
-          attempt_count?: number
-          email?: string
-          first_attempt_at?: string
-          locked_until?: string | null
-        }
-        Relationships: []
-      }
-      generations: {
-        Row: {
-          audio_url: string | null
-          created_at: string
-          id: string
-          text_input: string
-          user_id: string
-          voice_id: string
-          voice_mode: string
-        }
-        Insert: {
-          audio_url?: string | null
-          created_at?: string
-          id?: string
-          text_input: string
-          user_id: string
-          voice_id: string
-          voice_mode?: string
-        }
-        Update: {
-          audio_url?: string | null
-          created_at?: string
-          id?: string
-          text_input?: string
-          user_id?: string
-          voice_id?: string
-          voice_mode?: string
-        }
-        Relationships: []
-      }
       rate_limits: {
         Row: {
           id: string
@@ -86,42 +35,11 @@ export type Database = {
         }
         Relationships: []
       }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      check_and_record_login_attempt: {
-        Args: {
-          p_email: string
-          p_lockout_seconds?: number
-          p_max_attempts?: number
-          p_success: boolean
-          p_window_seconds?: number
-        }
-        Returns: Json
-      }
       check_rate_limit: {
         Args: {
           p_identifier: string
@@ -130,20 +48,9 @@ export type Database = {
         }
         Returns: boolean
       }
-      get_user_roles: {
-        Args: { _user_id: string }
-        Returns: Database["public"]["Enums"]["app_role"][]
-      }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -270,8 +177,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["admin", "moderator", "user"],
-    },
+    Enums: {},
   },
 } as const
