@@ -1,56 +1,26 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
+import sommyartLogo from "@/assets/sommyart-logo.jpg";
 
 interface SplashScreenProps {
   onComplete: () => void;
 }
 
 const SplashScreen = ({ onComplete }: SplashScreenProps) => {
-  const [isVisible, setIsVisible] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handleEnded = () => {
+    const timer = setTimeout(() => {
       setIsFadingOut(true);
-      setTimeout(() => {
-        setIsVisible(false);
-        onComplete();
-      }, 500);
-    };
+      setTimeout(onComplete, 500);
+    }, 1500);
 
-    video.addEventListener("ended", handleEnded);
-    
-    // Auto-play video with sound
-    video.play().catch((err) => {
-      console.log("Autoplay blocked, completing splash:", err);
-      // If autoplay is blocked, skip splash after a brief moment
-      setTimeout(() => {
-        setIsFadingOut(true);
-        setTimeout(() => {
-          setIsVisible(false);
-          onComplete();
-        }, 500);
-      }, 1000);
-    });
-
-    return () => {
-      video.removeEventListener("ended", handleEnded);
-    };
+    return () => clearTimeout(timer);
   }, [onComplete]);
 
-  // Handle click to skip intro
   const handleSkip = () => {
     setIsFadingOut(true);
-    setTimeout(() => {
-      setIsVisible(false);
-      onComplete();
-    }, 300);
+    setTimeout(onComplete, 300);
   };
-
-  if (!isVisible) return null;
 
   return (
     <div
@@ -59,22 +29,11 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
       }`}
       onClick={handleSkip}
     >
-      <video
-        ref={videoRef}
-        className="max-w-full max-h-full object-contain"
-        muted={false}
-        playsInline
-        preload="auto"
-      >
-        <source src="/intro.mp4" type="video/mp4" />
-      </video>
-      
-      <button
-        onClick={handleSkip}
-        className="absolute bottom-8 right-8 text-muted-foreground hover:text-foreground text-sm transition-colors"
-      >
-        Skip
-      </button>
+      <img
+        src={sommyartLogo}
+        alt="Sommyart Labs Logo"
+        className="w-32 h-32 md:w-40 md:h-40 rounded-2xl shadow-lg animate-fade-in"
+      />
     </div>
   );
 };
