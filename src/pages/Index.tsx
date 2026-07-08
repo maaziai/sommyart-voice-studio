@@ -339,54 +339,9 @@ const Index = () => {
     });
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
-
-  // Show loading while checking auth
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
-      {/* Bottom bar */}
-      <div className="fixed bottom-4 left-4 z-10 flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate('/library')}
-          className="bg-background/80 backdrop-blur-sm border-border/50 shadow-md"
-        >
-          <Library className="w-4 h-4 mr-2" />
-          My Sessions
-        </Button>
-        {isAdmin && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/admin')}
-            className="bg-background/80 backdrop-blur-sm border-border/50 shadow-md"
-          >
-            <Shield className="w-4 h-4 mr-2" />
-            Admin
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleSignOut}
-          className="bg-background/80 backdrop-blur-sm border-border/50 shadow-md"
-        >
-          <LogOut className="w-4 h-4 mr-2" />
-          Sign Out
-        </Button>
-      </div>
+
 
       {/* Hero Section */}
       <div className="relative overflow-hidden">
