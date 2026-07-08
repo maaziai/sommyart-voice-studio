@@ -187,37 +187,10 @@ serve(async (req) => {
   }
 
   try {
-    // Authenticate user
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized", success: false }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized", success: false }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const userId = claimsData.claims.sub;
-
-    // Rate limiting
+    // Rate limiting by IP (no auth required)
     const clientIp =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       req.headers.get("x-real-ip") ||
-      userId ||
       "unknown";
 
     const serviceClient = createClient(
@@ -228,7 +201,7 @@ serve(async (req) => {
     const { data: allowed, error: rlError } = await serviceClient.rpc(
       "check_rate_limit",
       {
-        p_identifier: clientIp,
+        p_identifier: `voice:${clientIp}`,
         p_max_requests: RATE_LIMIT_MAX_REQUESTS,
         p_window_seconds: RATE_LIMIT_WINDOW_SECONDS,
       }
@@ -240,6 +213,7 @@ serve(async (req) => {
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
 
     const { text, isMultiSpeaker, speakers, voice }: RequestBody = await req.json();
 
