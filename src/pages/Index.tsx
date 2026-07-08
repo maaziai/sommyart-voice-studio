@@ -1,12 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Mic, Download, Volume2, Split, LogOut, Play, Pause, Library, Shield } from "lucide-react";
+import { Loader2, Mic, Download, Volume2, Split, Play, Pause } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-studio.jpg";
 import sommyartLogo from "@/assets/sommyart-logo.jpg";
@@ -120,15 +118,7 @@ const Index = () => {
   const [isSommyartSpeaking, setIsSommyartSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
-  const { user, loading, signOut, isAdmin } = useAuth();
-  const navigate = useNavigate();
 
-  // Redirect to auth if not logged in
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth');
-    }
-  }, [user, loading, navigate]);
 
   // Legacy compatibility
   const isMultiSpeaker = voiceMode === "multi";
@@ -314,18 +304,6 @@ const Index = () => {
 
       if (data.success && data.audioUrl) {
         setGeneratedAudio(data.audioUrl);
-        
-        // Save generation to session library
-        if (user) {
-          await supabase.from("generations").insert({
-            user_id: user.id,
-            text_input: text.substring(0, 500),
-            voice_id: voiceMode === "single" ? selectedVoice : (speakers.map(s => s.voice).join(",")),
-            voice_mode: voiceMode,
-            audio_url: data.audioUrl,
-          });
-        }
-        
         toast({
           title: "Voice Generated!",
           description: "Your voiceover is ready and will play automatically.",
