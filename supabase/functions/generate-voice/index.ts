@@ -92,11 +92,25 @@ async function callGeminiTTS(
     responseModalities: ["AUDIO"],
   };
 
+  let effectiveText = text;
+  const styleParts: string[] = [];
+
   if (speakers && speakers.length >= 2) {
-    // Multi-speaker config
+    // Multi-speaker config: resolve personas to base voices; collect per-speaker style hints
+    const resolvedSpeakers = speakers.map((s) => {
+      const persona = VOICE_PERSONAS[s.voice];
+      if (persona) {
+        styleParts.push(`${s.name}: ${persona.styleInstruction}`);
+        return { ...s, voice: persona.baseVoice };
+      }
+      return s;
+    });
+    if (styleParts.length > 0) {
+      effectiveText = `${styleParts.join(" ")}\n\n${text}`;
+    }
     generationConfig.speechConfig = {
       multiSpeakerVoiceConfig: {
-        speakerVoiceConfigs: speakers.map((s) => ({
+        speakerVoiceConfigs: resolvedSpeakers.map((s) => ({
           speaker: s.name,
           voiceConfig: {
             prebuiltVoiceConfig: {
@@ -107,11 +121,17 @@ async function callGeminiTTS(
       },
     };
   } else {
-    // Single speaker config
+    // Single speaker config: resolve persona if applicable
+    const requested = voiceName || "Kore";
+    const persona = VOICE_PERSONAS[requested];
+    const resolvedVoice = persona ? persona.baseVoice : requested;
+    if (persona) {
+      effectiveText = `${persona.styleInstruction}\n\n${text}`;
+    }
     generationConfig.speechConfig = {
       voiceConfig: {
         prebuiltVoiceConfig: {
-          voiceName: voiceName || "Kore",
+          voiceName: resolvedVoice,
         },
       },
     };
@@ -121,7 +141,7 @@ async function callGeminiTTS(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      contents: [{ parts: [{ text }] }],
+      contents: [{ parts: [{ text: effectiveText }] }],
       generationConfig,
     }),
   });
