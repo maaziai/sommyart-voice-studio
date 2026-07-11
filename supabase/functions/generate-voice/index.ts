@@ -7,10 +7,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Gemini TTS voice names
+// Gemini TTS voice names (plus persona aliases mapped below)
 const VALID_VOICES = [
   "Kore", "Puck", "Charon", "Fenrir", "Aoede", "Leda", "Orus", "Zephyr",
+  "Uzoma",
 ];
+
+// Persona voices: map to a real Gemini voice and prepend a style instruction
+const VOICE_PERSONAS: Record<string, { baseVoice: string; styleInstruction: string }> = {
+  Uzoma: {
+    baseVoice: "Aoede",
+    styleInstruction:
+      "Speak as Uzoma, a middle-aged Nigerian woman with a thick, warm Nigerian accent. Use natural Nigerian English intonation, rhythm, and cadence throughout. Say the following naturally:",
+  },
+};
 
 const RATE_LIMIT_MAX_REQUESTS = 10;
 const RATE_LIMIT_WINDOW_SECONDS = 60;
