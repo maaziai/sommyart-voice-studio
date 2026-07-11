@@ -55,6 +55,7 @@ const voiceOptions = [
   { value: "Leda", label: "Leda (Female Soft)" },
   { value: "Orus", label: "Orus (Male Calm)" },
   { value: "Zephyr", label: "Zephyr (Neutral)" },
+  { value: "Uzoma", label: "Uzoma (Female, Nigerian Accent)" },
 ];
 
 const defaultSpeakers: Speaker[] = [
