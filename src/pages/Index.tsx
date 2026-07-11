@@ -56,6 +56,7 @@ const voiceOptions = [
   { value: "Orus", label: "Orus (Male Calm)" },
   { value: "Zephyr", label: "Zephyr (Neutral)" },
   { value: "Uzoma", label: "Uzoma (Female, Nigerian Accent)" },
+  { value: "Ebuka", label: "Ebuka (Male, Nigerian Accent)" },
 ];
 
 const defaultSpeakers: Speaker[] = [
