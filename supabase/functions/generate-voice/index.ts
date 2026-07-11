@@ -10,7 +10,7 @@ const corsHeaders = {
 // Gemini TTS voice names (plus persona aliases mapped below)
 const VALID_VOICES = [
   "Kore", "Puck", "Charon", "Fenrir", "Aoede", "Leda", "Orus", "Zephyr",
-  "Uzoma",
+  "Uzoma", "Ebuka",
 ];
 
 // Persona voices: map to a real Gemini voice and prepend a style instruction
@@ -19,6 +19,11 @@ const VOICE_PERSONAS: Record<string, { baseVoice: string; styleInstruction: stri
     baseVoice: "Aoede",
     styleInstruction:
       "Speak as Uzoma, a middle-aged Nigerian woman with a thick, warm Nigerian accent. Use natural Nigerian English intonation, rhythm, and cadence throughout. Say the following naturally:",
+  },
+  Ebuka: {
+    baseVoice: "Puck",
+    styleInstruction:
+      "Speak as Ebuka, a middle-aged Nigerian man with a thick, warm Nigerian accent. Use natural Nigerian English intonation, rhythm, and cadence throughout. Say the following naturally:",
   },
 };
 
