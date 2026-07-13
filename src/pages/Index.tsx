@@ -105,7 +105,7 @@ const hasSplitVoiceTags = (script: string): boolean => {
   return voiceTagPattern.test(script);
 };
 
-type VoiceMode = "single" | "multi" | "split" | "sommyart";
+type VoiceMode = "single" | "multi" | "split";
 
 const Index = () => {
   const [text, setText] = useState("");
@@ -116,7 +116,6 @@ const Index = () => {
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("single");
   const [speakers, setSpeakers] = useState<Speaker[]>(defaultSpeakers);
   const [splitVoices, setSplitVoices] = useState(defaultSplitVoices);
-  const [sommyartVoice, setSommyartVoice] = useState<SommyartVoiceKey>("Sommyart-Male");
   const [isSommyartSpeaking, setIsSommyartSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
@@ -172,12 +171,12 @@ const Index = () => {
       return;
     }
 
-    // Sommyart browser TTS – speaks directly through the device, no backend call
-    if (voiceMode === "sommyart") {
+    // Single-mode Sommyart browser voice — speaks directly through the device, no backend call
+    if (voiceMode === "single" && isSommyartSplitVoice(selectedVoice)) {
       if (!isSommyartTTSSupported()) {
         toast({
           title: "Not Supported",
-          description: "Your browser does not support the Sommyart voice engine.",
+          description: "Your browser does not support this in-browser voice.",
           variant: "destructive",
         });
         return;
@@ -186,19 +185,20 @@ const Index = () => {
       setIsSommyartSpeaking(true);
       speakSommyart({
         text,
-        profileKey: sommyartVoice,
+        profileKey: getSommyartKey(selectedVoice),
         onEnd: () => setIsSommyartSpeaking(false),
         onError: () => {
           setIsSommyartSpeaking(false);
           toast({
             title: "Playback Failed",
-            description: "Sommyart engine could not play this text.",
+            description: "Could not play this text with the selected voice.",
             variant: "destructive",
           });
         },
       });
       return;
     }
+
 
     if (text.length > 10000) {
       toast({
