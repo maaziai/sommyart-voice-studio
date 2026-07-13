@@ -105,7 +105,7 @@ const hasSplitVoiceTags = (script: string): boolean => {
   return voiceTagPattern.test(script);
 };
 
-type VoiceMode = "single" | "multi" | "split" | "sommyart";
+type VoiceMode = "single" | "multi" | "split";
 
 const Index = () => {
   const [text, setText] = useState("");
@@ -116,7 +116,6 @@ const Index = () => {
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("single");
   const [speakers, setSpeakers] = useState<Speaker[]>(defaultSpeakers);
   const [splitVoices, setSplitVoices] = useState(defaultSplitVoices);
-  const [sommyartVoice, setSommyartVoice] = useState<SommyartVoiceKey>("Sommyart-Male");
   const [isSommyartSpeaking, setIsSommyartSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
@@ -172,12 +171,12 @@ const Index = () => {
       return;
     }
 
-    // Sommyart browser TTS – speaks directly through the device, no backend call
-    if (voiceMode === "sommyart") {
+    // Single-mode Sommyart browser voice — speaks directly through the device, no backend call
+    if (voiceMode === "single" && isSommyartSplitVoice(selectedVoice)) {
       if (!isSommyartTTSSupported()) {
         toast({
           title: "Not Supported",
-          description: "Your browser does not support the Sommyart voice engine.",
+          description: "Your browser does not support this in-browser voice.",
           variant: "destructive",
         });
         return;
@@ -186,19 +185,20 @@ const Index = () => {
       setIsSommyartSpeaking(true);
       speakSommyart({
         text,
-        profileKey: sommyartVoice,
+        profileKey: getSommyartKey(selectedVoice),
         onEnd: () => setIsSommyartSpeaking(false),
         onError: () => {
           setIsSommyartSpeaking(false);
           toast({
             title: "Playback Failed",
-            description: "Sommyart engine could not play this text.",
+            description: "Could not play this text with the selected voice.",
             variant: "destructive",
           });
         },
       });
       return;
     }
+
 
     if (text.length > 10000) {
       toast({
@@ -407,7 +407,7 @@ const Index = () => {
                   <Mic className="w-4 h-4 text-primary icon-3d-subtle" />
                   Voice Mode
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <Button
                     variant={voiceMode === "single" ? "default" : "outline"}
                     size="sm"
@@ -433,21 +433,9 @@ const Index = () => {
                     <Split className="w-3 h-3 mr-1 icon-3d-subtle" />
                     Split
                   </Button>
-                  <Button
-                    variant={voiceMode === "sommyart" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setVoiceMode("sommyart")}
-                    className="w-full"
-                  >
-                    Sommyart
-                  </Button>
                 </div>
-                {voiceMode === "sommyart" && (
-                  <p className="text-xs text-muted-foreground">
-                    Free in-browser engine using your device's voices. Quality depends on your OS.
-                  </p>
-                )}
               </div>
+
 
               {/* Split Voice Instructions */}
               {voiceMode === "split" && (
@@ -531,7 +519,7 @@ const Index = () => {
                 />
               )}
 
-              {/* Single Voice Selection */}
+              {/* Single Voice Selection (Gemini + Sommyart in-browser voices) */}
               {voiceMode === "single" && (
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-foreground">Voice Selection</label>
@@ -540,49 +528,44 @@ const Index = () => {
                       <SelectValue placeholder="Choose a voice" />
                     </SelectTrigger>
                     <SelectContent className="bg-popover border-border z-50">
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                        Gemini AI Voices
+                      </div>
                       {voiceOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value} className="cursor-pointer">
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-border mt-1 pt-2">
+                        🎙 Sommyart In-Browser Voices
+                      </div>
+                      {sommyartSplitOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value} className="cursor-pointer">
                           {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-              )}
-
-              {/* Sommyart Voice Selection */}
-              {voiceMode === "sommyart" && (
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-foreground">Sommyart Voice</label>
-                  <Select value={sommyartVoice} onValueChange={(v) => setSommyartVoice(v as SommyartVoiceKey)}>
-                    <SelectTrigger className="bg-background/50 border-border/50">
-                      <SelectValue placeholder="Choose a Sommyart voice" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover border-border z-50">
-                      {Object.values(sommyartVoiceProfiles).map((p) => (
-                        <SelectItem key={p.name} value={p.name} className="cursor-pointer">
-                          {p.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {sommyartVoiceProfiles[sommyartVoice].description}
-                  </p>
+                  {isSommyartSplitVoice(selectedVoice) && (
+                    <p className="text-xs text-muted-foreground">
+                      {sommyartVoiceProfiles[getSommyartKey(selectedVoice)].description} · Free in-browser engine using your device's voices.
+                    </p>
+                  )}
                 </div>
               )}
 
               <Button
                 onClick={handleGenerate}
                 disabled={
-                  (voiceMode === "sommyart" ? isSommyartSpeaking : isGenerating) ||
-                  !text.trim()
+                  (voiceMode === "single" && isSommyartSplitVoice(selectedVoice)
+                    ? isSommyartSpeaking
+                    : isGenerating) || !text.trim()
                 }
                 variant="studio"
                 size="lg"
                 className="w-full"
               >
-                {voiceMode === "sommyart" ? (
+                {voiceMode === "single" && isSommyartSplitVoice(selectedVoice) ? (
                   isSommyartSpeaking ? (
                     <>
                       <Volume2 className="w-5 h-5 animate-pulse" />
@@ -591,7 +574,7 @@ const Index = () => {
                   ) : (
                     <>
                       <Play className="w-5 h-5 icon-3d" />
-                      Play with Sommyart
+                      Play Voice
                     </>
                   )
                 ) : isGenerating ? (
@@ -607,7 +590,7 @@ const Index = () => {
                 )}
               </Button>
 
-              {voiceMode === "sommyart" && isSommyartSpeaking && (
+              {voiceMode === "single" && isSommyartSplitVoice(selectedVoice) && isSommyartSpeaking && (
                 <Button
                   onClick={() => {
                     stopSommyart();
@@ -621,6 +604,7 @@ const Index = () => {
                   Stop
                 </Button>
               )}
+
             </div>
 
             {/* Right Column - Preview */}
