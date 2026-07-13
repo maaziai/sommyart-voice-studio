@@ -519,7 +519,7 @@ const Index = () => {
                 />
               )}
 
-              {/* Single Voice Selection */}
+              {/* Single Voice Selection (Gemini + Sommyart in-browser voices) */}
               {voiceMode === "single" && (
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-foreground">Voice Selection</label>
@@ -528,49 +528,44 @@ const Index = () => {
                       <SelectValue placeholder="Choose a voice" />
                     </SelectTrigger>
                     <SelectContent className="bg-popover border-border z-50">
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                        Gemini AI Voices
+                      </div>
                       {voiceOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value} className="cursor-pointer">
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-border mt-1 pt-2">
+                        🎙 Sommyart In-Browser Voices
+                      </div>
+                      {sommyartSplitOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value} className="cursor-pointer">
                           {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-              )}
-
-              {/* Sommyart Voice Selection */}
-              {voiceMode === "sommyart" && (
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-foreground">Sommyart Voice</label>
-                  <Select value={sommyartVoice} onValueChange={(v) => setSommyartVoice(v as SommyartVoiceKey)}>
-                    <SelectTrigger className="bg-background/50 border-border/50">
-                      <SelectValue placeholder="Choose a Sommyart voice" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover border-border z-50">
-                      {Object.values(sommyartVoiceProfiles).map((p) => (
-                        <SelectItem key={p.name} value={p.name} className="cursor-pointer">
-                          {p.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {sommyartVoiceProfiles[sommyartVoice].description}
-                  </p>
+                  {isSommyartSplitVoice(selectedVoice) && (
+                    <p className="text-xs text-muted-foreground">
+                      {sommyartVoiceProfiles[getSommyartKey(selectedVoice)].description} · Free in-browser engine using your device's voices.
+                    </p>
+                  )}
                 </div>
               )}
 
               <Button
                 onClick={handleGenerate}
                 disabled={
-                  (voiceMode === "sommyart" ? isSommyartSpeaking : isGenerating) ||
-                  !text.trim()
+                  (voiceMode === "single" && isSommyartSplitVoice(selectedVoice)
+                    ? isSommyartSpeaking
+                    : isGenerating) || !text.trim()
                 }
                 variant="studio"
                 size="lg"
                 className="w-full"
               >
-                {voiceMode === "sommyart" ? (
+                {voiceMode === "single" && isSommyartSplitVoice(selectedVoice) ? (
                   isSommyartSpeaking ? (
                     <>
                       <Volume2 className="w-5 h-5 animate-pulse" />
@@ -579,7 +574,7 @@ const Index = () => {
                   ) : (
                     <>
                       <Play className="w-5 h-5 icon-3d" />
-                      Play with Sommyart
+                      Play Voice
                     </>
                   )
                 ) : isGenerating ? (
@@ -595,7 +590,7 @@ const Index = () => {
                 )}
               </Button>
 
-              {voiceMode === "sommyart" && isSommyartSpeaking && (
+              {voiceMode === "single" && isSommyartSplitVoice(selectedVoice) && isSommyartSpeaking && (
                 <Button
                   onClick={() => {
                     stopSommyart();
@@ -609,6 +604,7 @@ const Index = () => {
                   Stop
                 </Button>
               )}
+
             </div>
 
             {/* Right Column - Preview */}
