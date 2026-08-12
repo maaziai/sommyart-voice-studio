@@ -10,41 +10,8 @@ import heroImage from "@/assets/hero-studio.jpg";
 import sommyartLogo from "@/assets/sommyart-logo.jpg";
 import { SpeakerConfig, Speaker } from "@/components/SpeakerConfig";
 import MusicGenerator from "@/components/MusicGenerator";
-import {
-  sommyartVoiceProfiles,
-  speakSommyart,
-  speakSommyartSequence,
-  stopSommyart,
-  isSommyartTTSSupported,
-  type SommyartVoiceKey,
-} from "@/lib/sommyart-tts";
 
-const sommyartSplitOptions = Object.values(sommyartVoiceProfiles).map((p) => ({
-  value: `sommyart:${p.name}`,
-  label: `🎙 ${p.label}`,
-}));
 
-const isSommyartSplitVoice = (value: string) => value.startsWith("sommyart:");
-const getSommyartKey = (value: string): SommyartVoiceKey =>
-  value.replace(/^sommyart:/, "") as SommyartVoiceKey;
-
-// Parse [MALE]/[FEMALE]-tagged script into ordered segments for local TTS
-const parseSplitSegments = (script: string): { role: "MALE" | "FEMALE"; text: string }[] => {
-  const regex = /\[(MALE|FEMALE)\]/gi;
-  const segments: { role: "MALE" | "FEMALE"; text: string }[] = [];
-  const matches: { role: "MALE" | "FEMALE"; index: number; length: number }[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = regex.exec(script)) !== null) {
-    matches.push({ role: m[1].toUpperCase() as "MALE" | "FEMALE", index: m.index, length: m[0].length });
-  }
-  for (let i = 0; i < matches.length; i++) {
-    const start = matches[i].index + matches[i].length;
-    const end = i + 1 < matches.length ? matches[i + 1].index : script.length;
-    const text = script.slice(start, end).trim();
-    if (text) segments.push({ role: matches[i].role, text });
-  }
-  return segments;
-};
 
 const voiceOptions = [
   { value: "Kore", label: "Kore (Female)" },
