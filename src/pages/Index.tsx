@@ -556,28 +556,12 @@ const Index = () => {
 
               <Button
                 onClick={handleGenerate}
-                disabled={
-                  (voiceMode === "single" && isSommyartSplitVoice(selectedVoice)
-                    ? isSommyartSpeaking
-                    : isGenerating) || !text.trim()
-                }
+                disabled={isGenerating || !text.trim()}
                 variant="studio"
                 size="lg"
                 className="w-full"
               >
-                {voiceMode === "single" && isSommyartSplitVoice(selectedVoice) ? (
-                  isSommyartSpeaking ? (
-                    <>
-                      <Volume2 className="w-5 h-5 animate-pulse" />
-                      Speaking...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-5 h-5 icon-3d" />
-                      Play Voice
-                    </>
-                  )
-                ) : isGenerating ? (
+                {isGenerating ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
                     Generating Voice...
@@ -590,20 +574,6 @@ const Index = () => {
                 )}
               </Button>
 
-              {voiceMode === "single" && isSommyartSplitVoice(selectedVoice) && isSommyartSpeaking && (
-                <Button
-                  onClick={() => {
-                    stopSommyart();
-                    setIsSommyartSpeaking(false);
-                  }}
-                  variant="outline"
-                  size="lg"
-                  className="w-full"
-                >
-                  <Pause className="w-5 h-5" />
-                  Stop
-                </Button>
-              )}
 
             </div>
 
