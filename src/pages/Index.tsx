@@ -478,15 +478,8 @@ const Index = () => {
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>
-                          ))}
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-border mt-1 pt-2">
-                            🎙 Sommyart Voices
-                          </div>
-                          {sommyartSplitOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
+                        </SelectContent>
+
                         </SelectContent>
                       </Select>
                     </div>
