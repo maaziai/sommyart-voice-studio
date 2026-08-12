@@ -83,7 +83,7 @@ const Index = () => {
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("single");
   const [speakers, setSpeakers] = useState<Speaker[]>(defaultSpeakers);
   const [splitVoices, setSplitVoices] = useState(defaultSplitVoices);
-  const [isSommyartSpeaking, setIsSommyartSpeaking] = useState(false);
+  
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
 
