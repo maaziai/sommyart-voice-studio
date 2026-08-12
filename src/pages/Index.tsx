@@ -171,33 +171,8 @@ const Index = () => {
       return;
     }
 
-    // Single-mode Sommyart browser voice — speaks directly through the device, no backend call
-    if (voiceMode === "single" && isSommyartSplitVoice(selectedVoice)) {
-      if (!isSommyartTTSSupported()) {
-        toast({
-          title: "Not Supported",
-          description: "Your browser does not support this in-browser voice.",
-          variant: "destructive",
-        });
-        return;
-      }
-      setGeneratedAudio(null);
-      setIsSommyartSpeaking(true);
-      speakSommyart({
-        text,
-        profileKey: getSommyartKey(selectedVoice),
-        onEnd: () => setIsSommyartSpeaking(false),
-        onError: () => {
-          setIsSommyartSpeaking(false);
-          toast({
-            title: "Playback Failed",
-            description: "Could not play this text with the selected voice.",
-            variant: "destructive",
-          });
-        },
-      });
-      return;
-    }
+
+
 
 
     if (text.length > 10000) {
