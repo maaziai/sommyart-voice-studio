@@ -519,7 +519,7 @@ const Index = () => {
                 />
               )}
 
-              {/* Single Voice Selection (Gemini + Sommyart in-browser voices) */}
+              {/* Single Voice Selection (Gemini voices) */}
               {voiceMode === "single" && (
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-foreground">Voice Selection</label>
@@ -536,23 +536,11 @@ const Index = () => {
                           {option.label}
                         </SelectItem>
                       ))}
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-border mt-1 pt-2">
-                        🎙 Sommyart In-Browser Voices
-                      </div>
-                      {sommyartSplitOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value} className="cursor-pointer">
-                          {option.label}
-                        </SelectItem>
-                      ))}
                     </SelectContent>
                   </Select>
-                  {isSommyartSplitVoice(selectedVoice) && (
-                    <p className="text-xs text-muted-foreground">
-                      {sommyartVoiceProfiles[getSommyartKey(selectedVoice)].description} · Free in-browser engine using your device's voices.
-                    </p>
-                  )}
                 </div>
               )}
+
 
               <Button
                 onClick={handleGenerate}
