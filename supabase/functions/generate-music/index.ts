@@ -78,6 +78,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: selectedModel,
         input: sanitized,
+        response_format: { type: "audio" },
       }),
     });
 
@@ -85,14 +86,27 @@ serve(async (req) => {
       const errText = await response.text();
       console.error("Lyria API error:", response.status, errText);
       if (response.status === 429) {
-        throw new Error("Service is currently busy. Please try again in a moment.");
-      } else if (response.status === 400) {
-        throw new Error("Prompt was rejected. Try rewording (avoid artist names or copyrighted lyrics).");
-      } else if (response.status >= 500) {
-        throw new Error("Music generation service temporarily unavailable.");
-      } else {
-        throw new Error("Music generation failed. Please check your prompt and try again.");
+        const quotaExhausted = /quota|limit: 0/i.test(errText);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: quotaExhausted
+              ? "Music generation quota is exhausted for this API key. Lyria 3 requires a paid Gemini API plan — enable billing on your Google AI Studio key, then try again."
+              : "Too many music requests right now. Please wait a moment and try again.",
+          }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
+      if (response.status === 400) {
+        throw new Error("Prompt was rejected. Try rewording (avoid artist names or copyrighted lyrics).");
+      }
+      if (response.status === 403 || response.status === 401) {
+        throw new Error("Music generation key is invalid or lacks access to Lyria 3.");
+      }
+      if (response.status >= 500) {
+        throw new Error("Music generation service temporarily unavailable.");
+      }
+      throw new Error("Music generation failed. Please check your prompt and try again.");
     }
 
     const data = await response.json();
@@ -109,17 +123,30 @@ serve(async (req) => {
       for (const block of blocks) {
         if (block.type === "audio" && block.data) {
           audioBase64 = block.data;
-          if (block.mime_type) mimeType = block.mime_type;
+          if (block.mime_type || block.mimeType) mimeType = block.mime_type ?? block.mimeType;
         } else if (block.type === "text" && block.text) {
           lyrics.push(block.text);
         }
       }
     }
 
+    // Fallback to convenience properties if the steps schema shape differs
+    if (!audioBase64) {
+      const conv = data?.output_audio ?? data?.outputAudio;
+      if (conv?.data) {
+        audioBase64 = conv.data;
+        if (conv.mime_type || conv.mimeType) mimeType = conv.mime_type ?? conv.mimeType;
+      }
+    }
+    if (lyrics.length === 0 && (data?.output_text ?? data?.outputText)) {
+      lyrics.push(data.output_text ?? data.outputText);
+    }
+
     if (!audioBase64) {
       console.error("No audio in response:", JSON.stringify(data).slice(0, 500));
       throw new Error("No audio data returned from the service.");
     }
+
 
     return new Response(
       JSON.stringify({

@@ -49,7 +49,18 @@ const MusicGenerator = () => {
         body: { prompt, model },
       });
 
-      if (error) throw error;
+      // Non-2xx responses come back as FunctionsHttpError — read the JSON body for the real message
+      if (error) {
+        let msg = error.message;
+        const res = (error as { context?: Response }).context;
+        if (res && typeof res.json === "function") {
+          try {
+            const body = await res.json();
+            if (body?.error) msg = body.error;
+          } catch { /* ignore */ }
+        }
+        throw new Error(msg);
+      }
       if (!data?.success) throw new Error(data?.error || "Music generation failed");
 
       setAudioUrl(data.audioUrl);
@@ -62,6 +73,7 @@ const MusicGenerator = () => {
       setIsGenerating(false);
     }
   };
+
 
   const togglePlay = () => {
     if (!audioRef.current) return;

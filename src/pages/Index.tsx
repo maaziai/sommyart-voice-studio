@@ -10,41 +10,8 @@ import heroImage from "@/assets/hero-studio.jpg";
 import sommyartLogo from "@/assets/sommyart-logo.jpg";
 import { SpeakerConfig, Speaker } from "@/components/SpeakerConfig";
 import MusicGenerator from "@/components/MusicGenerator";
-import {
-  sommyartVoiceProfiles,
-  speakSommyart,
-  speakSommyartSequence,
-  stopSommyart,
-  isSommyartTTSSupported,
-  type SommyartVoiceKey,
-} from "@/lib/sommyart-tts";
 
-const sommyartSplitOptions = Object.values(sommyartVoiceProfiles).map((p) => ({
-  value: `sommyart:${p.name}`,
-  label: `🎙 ${p.label}`,
-}));
 
-const isSommyartSplitVoice = (value: string) => value.startsWith("sommyart:");
-const getSommyartKey = (value: string): SommyartVoiceKey =>
-  value.replace(/^sommyart:/, "") as SommyartVoiceKey;
-
-// Parse [MALE]/[FEMALE]-tagged script into ordered segments for local TTS
-const parseSplitSegments = (script: string): { role: "MALE" | "FEMALE"; text: string }[] => {
-  const regex = /\[(MALE|FEMALE)\]/gi;
-  const segments: { role: "MALE" | "FEMALE"; text: string }[] = [];
-  const matches: { role: "MALE" | "FEMALE"; index: number; length: number }[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = regex.exec(script)) !== null) {
-    matches.push({ role: m[1].toUpperCase() as "MALE" | "FEMALE", index: m.index, length: m[0].length });
-  }
-  for (let i = 0; i < matches.length; i++) {
-    const start = matches[i].index + matches[i].length;
-    const end = i + 1 < matches.length ? matches[i + 1].index : script.length;
-    const text = script.slice(start, end).trim();
-    if (text) segments.push({ role: matches[i].role, text });
-  }
-  return segments;
-};
 
 const voiceOptions = [
   { value: "Kore", label: "Kore (Female)" },
@@ -116,7 +83,7 @@ const Index = () => {
   const [voiceMode, setVoiceMode] = useState<VoiceMode>("single");
   const [speakers, setSpeakers] = useState<Speaker[]>(defaultSpeakers);
   const [splitVoices, setSplitVoices] = useState(defaultSplitVoices);
-  const [isSommyartSpeaking, setIsSommyartSpeaking] = useState(false);
+  
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
 
@@ -171,33 +138,8 @@ const Index = () => {
       return;
     }
 
-    // Single-mode Sommyart browser voice — speaks directly through the device, no backend call
-    if (voiceMode === "single" && isSommyartSplitVoice(selectedVoice)) {
-      if (!isSommyartTTSSupported()) {
-        toast({
-          title: "Not Supported",
-          description: "Your browser does not support this in-browser voice.",
-          variant: "destructive",
-        });
-        return;
-      }
-      setGeneratedAudio(null);
-      setIsSommyartSpeaking(true);
-      speakSommyart({
-        text,
-        profileKey: getSommyartKey(selectedVoice),
-        onEnd: () => setIsSommyartSpeaking(false),
-        onError: () => {
-          setIsSommyartSpeaking(false);
-          toast({
-            title: "Playback Failed",
-            description: "Could not play this text with the selected voice.",
-            variant: "destructive",
-          });
-        },
-      });
-      return;
-    }
+
+
 
 
     if (text.length > 10000) {
@@ -233,49 +175,8 @@ const Index = () => {
           return;
         }
 
-        // If either selected voice is a Sommyart browser voice, route locally
-        const maleIsSommyart = isSommyartSplitVoice(splitVoices.male);
-        const femaleIsSommyart = isSommyartSplitVoice(splitVoices.female);
-        if (maleIsSommyart || femaleIsSommyart) {
-          if (!isSommyartTTSSupported()) {
-            toast({
-              title: "Not Supported",
-              description: "Your browser does not support the Sommyart voice engine.",
-              variant: "destructive",
-            });
-            setIsGenerating(false);
-            return;
-          }
-          // Fallback to a default Sommyart profile if only one side is Sommyart
-          const maleKey: SommyartVoiceKey = maleIsSommyart
-            ? getSommyartKey(splitVoices.male)
-            : "Sommyart-Male";
-          const femaleKey: SommyartVoiceKey = femaleIsSommyart
-            ? getSommyartKey(splitVoices.female)
-            : "Mmesoma";
 
-          const segments = parseSplitSegments(text).map((s) => ({
-            text: s.text,
-            profileKey: s.role === "MALE" ? maleKey : femaleKey,
-          }));
 
-          setGeneratedAudio(null);
-          setIsGenerating(false);
-          setIsSommyartSpeaking(true);
-          speakSommyartSequence({
-            segments,
-            onEnd: () => setIsSommyartSpeaking(false),
-            onError: () => {
-              setIsSommyartSpeaking(false);
-              toast({
-                title: "Playback Failed",
-                description: "Sommyart engine could not play this script.",
-                variant: "destructive",
-              });
-            },
-          });
-          return;
-        }
 
         processedText = parseSplitVoiceScript(text);
         useSpeakers = [
@@ -456,14 +357,6 @@ const Index = () => {
                               {option.label}
                             </SelectItem>
                           ))}
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-border mt-1 pt-2">
-                            🎙 Sommyart Voices
-                          </div>
-                          {sommyartSplitOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -479,15 +372,8 @@ const Index = () => {
                               {option.label}
                             </SelectItem>
                           ))}
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-border mt-1 pt-2">
-                            🎙 Sommyart Voices
-                          </div>
-                          {sommyartSplitOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
                         </SelectContent>
+
                       </Select>
                     </div>
                   </div>
@@ -519,7 +405,7 @@ const Index = () => {
                 />
               )}
 
-              {/* Single Voice Selection (Gemini + Sommyart in-browser voices) */}
+              {/* Single Voice Selection (Gemini voices) */}
               {voiceMode === "single" && (
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-foreground">Voice Selection</label>
@@ -536,48 +422,20 @@ const Index = () => {
                           {option.label}
                         </SelectItem>
                       ))}
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t border-border mt-1 pt-2">
-                        🎙 Sommyart In-Browser Voices
-                      </div>
-                      {sommyartSplitOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value} className="cursor-pointer">
-                          {option.label}
-                        </SelectItem>
-                      ))}
                     </SelectContent>
                   </Select>
-                  {isSommyartSplitVoice(selectedVoice) && (
-                    <p className="text-xs text-muted-foreground">
-                      {sommyartVoiceProfiles[getSommyartKey(selectedVoice)].description} · Free in-browser engine using your device's voices.
-                    </p>
-                  )}
                 </div>
               )}
 
+
               <Button
                 onClick={handleGenerate}
-                disabled={
-                  (voiceMode === "single" && isSommyartSplitVoice(selectedVoice)
-                    ? isSommyartSpeaking
-                    : isGenerating) || !text.trim()
-                }
+                disabled={isGenerating || !text.trim()}
                 variant="studio"
                 size="lg"
                 className="w-full"
               >
-                {voiceMode === "single" && isSommyartSplitVoice(selectedVoice) ? (
-                  isSommyartSpeaking ? (
-                    <>
-                      <Volume2 className="w-5 h-5 animate-pulse" />
-                      Speaking...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-5 h-5 icon-3d" />
-                      Play Voice
-                    </>
-                  )
-                ) : isGenerating ? (
+                {isGenerating ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
                     Generating Voice...
@@ -590,20 +448,6 @@ const Index = () => {
                 )}
               </Button>
 
-              {voiceMode === "single" && isSommyartSplitVoice(selectedVoice) && isSommyartSpeaking && (
-                <Button
-                  onClick={() => {
-                    stopSommyart();
-                    setIsSommyartSpeaking(false);
-                  }}
-                  variant="outline"
-                  size="lg"
-                  className="w-full"
-                >
-                  <Pause className="w-5 h-5" />
-                  Stop
-                </Button>
-              )}
 
             </div>
 
