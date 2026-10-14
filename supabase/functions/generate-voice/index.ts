@@ -180,6 +180,57 @@ async function callGeminiTTS(
   return pcmBytes;
 }
 
+
+// Split long text into chunks (<= maxLen) on line/sentence boundaries
+function chunkText(text: string, maxLen = 2000): string[] {
+  if (text.length <= maxLen) return [text];
+  const pieces = text.split(/(?<=[.!?\n])\s+/);
+  const chunks: string[] = [];
+  let cur = "";
+  for (let p of pieces) {
+    while (p.length > maxLen) {
+      if (cur) { chunks.push(cur); cur = ""; }
+      chunks.push(p.slice(0, maxLen));
+      p = p.slice(maxLen);
+    }
+    if ((cur + " " + p).length > maxLen && cur) { chunks.push(cur); cur = p; }
+    else cur = cur ? cur + " " + p : p;
+  }
+  if (cur) chunks.push(cur);
+  return chunks;
+}
+
+async function generateChunked(
+  text: string, apiKey: string, voiceName?: string, speakers?: Speaker[]
+): Promise<Uint8Array> {
+  const chunks = chunkText(text);
+  const results: Uint8Array[] = new Array(chunks.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < chunks.length) {
+      const i = next++;
+      let lastErr: unknown;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          results[i] = await callGeminiTTS(chunks[i], apiKey, voiceName, speakers);
+          lastErr = null;
+          break;
+        } catch (e) {
+          lastErr = e;
+          await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+        }
+      }
+      if (lastErr) throw lastErr;
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(3, chunks.length) }, worker));
+  const total = results.reduce((n, r) => n + r.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const r of results) { out.set(r, off); off += r.length; }
+  return out;
+}
+
 // Parse multi-speaker text into segments
 function parseMultiSpeakerText(
   text: string,
@@ -291,12 +342,12 @@ serve(async (req) => {
         `Multi-speaker: ${speakers.length} speakers, text length: ${sanitizedText.length}`
       );
 
-      pcmData = await callGeminiTTS(sanitizedText, GOOGLE_API_KEY, undefined, speakers);
+      pcmData = await generateChunked(sanitizedText, GOOGLE_API_KEY, undefined, speakers);
     } else {
       // Single speaker
       const voiceName = voice || "Kore";
       console.log(`Single speaker: ${voiceName}`);
-      pcmData = await callGeminiTTS(sanitizedText, GOOGLE_API_KEY, voiceName);
+      pcmData = await generateChunked(sanitizedText, GOOGLE_API_KEY, voiceName);
     }
 
     // Wrap PCM in WAV
